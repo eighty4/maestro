@@ -20,7 +20,7 @@ func main() {
 	} else {
 		// todo launch services in dep hierarchy order
 		for _, service := range config.Services {
-			LaunchService(service)
+			LaunchService(*service)
 		}
 		log.Printf("%d services started\n", len(config.Services))
 	}

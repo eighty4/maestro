@@ -68,7 +68,13 @@ func TestReadConfig_ReturnsConfig_WithGradleRunTask(t *testing.T) {
 services:
   my-api:
     gradle:
-      module: service:session
+      module: my-api-module
+      task: run
+    depends_on:
+     - postgres
+  postgres:
+    gradle:
+      module: postgres
       task: run
 `)
 	defer cleanup(dir)
@@ -78,16 +84,48 @@ services:
 	if err != nil {
 		t.Error(err)
 	} else if config == nil {
-		t.Error("config should not be nil")
-	} else if len(config.Services) != 1 {
-		t.Error("config should have exactly one service")
-	} else if _, ok := config.Services["my-api"]; !ok {
-		t.Error("services should have a my-api service")
-	} else if config.Services["my-api"].Gradle == nil {
-		t.Error("service my-api should have a gradle task config")
-	} else if config.Services["my-api"].Gradle.Module != "service:session" {
-		t.Error("service my-api does not have service:session for gradle module")
-	} else if config.Services["my-api"].Gradle.Task != "run" {
-		t.Error("service my-api does not have run for gradle task")
+		t.Error("config is nil")
+	} else if len(config.Services) != 2 {
+		t.Error("should have exactly two services")
+	}
+
+	serviceConfig, ok := config.Services["my-api"]
+	if !ok {
+		t.Error("service is not present")
+	} else if serviceConfig.Name != "my-api" {
+		t.Errorf("expected name my-api, actual value was %s", serviceConfig.Name)
+	} else if serviceConfig.Gradle == nil {
+		t.Error("gradle config not present")
+	} else if serviceConfig.Gradle.Module != "my-api-module" {
+		t.Error("expected module my-api-module, actual value was " + serviceConfig.Gradle.Module)
+	} else if serviceConfig.Gradle.Task != "run" {
+		t.Error("expected task run, actual value was " + serviceConfig.Gradle.Task)
+	} else if len(serviceConfig.DependsOn) == 0 {
+		t.Error("deps is empty")
+	} else if serviceConfig.DependsOn[0] != "postgres" {
+		t.Error("expected dep postgres, actual value was " + serviceConfig.DependsOn[0])
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenDependsOnPointsToUnknownService(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    gradle:
+      module: my-api-module
+      task: run
+    depends_on:
+     - postgres
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if config != nil {
+		t.Error("config is not nil")
+	} else if err == nil {
+		t.Error("error is nil")
+	} else if !strings.Contains(err.Error(), "has declared a dep on") {
+		t.Error("error was not for missing dep")
 	}
 }
