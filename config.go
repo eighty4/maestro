@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 )
@@ -22,10 +22,11 @@ type ServiceConfig struct {
 	Name        string
 	Gradle      *GradleTaskConfig
 	Healthcheck *HealthcheckConfig
+	DependsOn   []string `yaml:"depends_on"`
 }
 
 type Config struct {
-	Services map[string]ServiceConfig
+	Services map[string]*ServiceConfig
 }
 
 func ReadConfig(dir string) (*Config, error) {
@@ -45,7 +46,14 @@ func ReadConfig(dir string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse yaml from %s: %s", file, err.Error())
 	}
 
-	// todo validate config
+	for name, service := range config.Services {
+		service.Name = name
+		for _, dep := range service.DependsOn {
+			if _, ok := config.Services[dep]; !ok {
+				return nil, fmt.Errorf("%s has declared a dep on %s that does not exist", name, dep)
+			}
+		}
+	}
 
 	return &config, nil
 }
