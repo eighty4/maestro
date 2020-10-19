@@ -18,10 +18,7 @@ func main() {
 	if config == nil {
 		// todo read build.gradle, package.json, docker-compose.yml for services to create
 	} else {
-		// todo launch services in dep hierarchy order
-		for _, service := range config.Services {
-			LaunchService(*service)
-		}
-		log.Printf("%d services started\n", len(config.Services))
+		InitServices(config)
+		select {}
 	}
 }

@@ -26,7 +26,8 @@ type ServiceConfig struct {
 }
 
 type Config struct {
-	Services map[string]*ServiceConfig
+	Services       []*ServiceConfig          `yaml:"-"`
+	ServicesByName map[string]*ServiceConfig `yaml:"services"`
 }
 
 func ReadConfig(dir string) (*Config, error) {
@@ -46,10 +47,11 @@ func ReadConfig(dir string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse yaml from %s: %s", file, err.Error())
 	}
 
-	for name, service := range config.Services {
+	for name, service := range config.ServicesByName {
+		config.Services = append(config.Services, service)
 		service.Name = name
 		for _, dep := range service.DependsOn {
-			if _, ok := config.Services[dep]; !ok {
+			if _, ok := config.ServicesByName[dep]; !ok {
 				return nil, fmt.Errorf("%s has declared a dep on %s that does not exist", name, dep)
 			}
 		}
