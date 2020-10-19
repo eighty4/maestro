@@ -86,10 +86,12 @@ services:
 	} else if config == nil {
 		t.Error("config is nil")
 	} else if len(config.Services) != 2 {
-		t.Error("should have exactly two services")
+		t.Errorf("expected services count 2, actual value was %d", len(config.Services))
+	} else if len(config.ServicesByName) != 2 {
+		t.Errorf("expected services by name count 2, actual value was %d", len(config.ServicesByName))
 	}
 
-	serviceConfig, ok := config.Services["my-api"]
+	serviceConfig, ok := config.ServicesByName["my-api"]
 	if !ok {
 		t.Error("service is not present")
 	} else if serviceConfig.Name != "my-api" {
