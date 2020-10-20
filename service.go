@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func InitServices(config *Config) {
@@ -17,6 +18,7 @@ func InitServices(config *Config) {
 
 	fmt.Printf("service start order: %v\n", startOrder)
 	for _, dep := range startOrder {
+		// todo return status channel to coordinate starting dependent services
 		LaunchService(config.ServicesByName[dep])
 	}
 }
@@ -52,13 +54,45 @@ func LaunchService(config *ServiceConfig) {
 
 	// todo color-coded service name appended to each log line
 	command.Stdout = os.Stdout
-	command.Stdin = os.Stdin
 	command.Stderr = os.Stderr
+
+	var hcTicker *time.Ticker
 	go func() {
 		err := command.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(config.Name, err.Error())
 		}
-		// todo start healthcheck timer
+		if hcTicker != nil {
+			hcTicker.Stop()
+			hcTicker = nil
+		}
 	}()
+
+	if config.Healthcheck != nil {
+		go func() {
+			if config.Healthcheck.Delay > 0 {
+				<-time.NewTimer(time.Second * time.Duration(config.Healthcheck.Delay)).C
+			}
+			hcTicker = time.NewTicker(time.Second * time.Duration(config.Healthcheck.Interval))
+			for {
+				if hcTicker == nil {
+					return
+				}
+
+				// todo support path expansions with sh (what about win?)
+				//hcCmd := exec.Command("sh", "-c", fmt.Sprintf("'%q'", config.Healthcheck.Cmd))
+				hcCmdSplit := strings.Fields(config.Healthcheck.Cmd)
+				hcCmd := exec.Command(hcCmdSplit[0], hcCmdSplit[1:]...)
+				err := hcCmd.Run()
+				if err != nil {
+					log.Printf("%s hc cmd (%s) err: %s\n", config.Name, config.Healthcheck.Cmd, err.Error())
+				} else if !hcCmd.ProcessState.Success() {
+					log.Printf("%s hc cmd (%s) err: %d\n", config.Name, config.Healthcheck.Cmd, hcCmd.ProcessState.ExitCode())
+				} else {
+					log.Printf("%s hc: healthy\n", config.Name)
+				}
+				<-hcTicker.C
+			}
+		}()
+	}
 }
