@@ -63,19 +63,99 @@ func TestReadConfig_ReturnsError_WhenConfigIsMalformedYaml(t *testing.T) {
 	}
 }
 
-func TestReadConfig_ReturnsConfig_WithGradleRunTask(t *testing.T) {
+func TestReadConfig_ReturnsConfig_WithExecCommand(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if err != nil {
+		t.Error(err)
+	} else {
+		serviceConfig, ok := config.ServicesByName["my-api"]
+		if !ok {
+			t.Error("service is not present")
+		} else if serviceConfig.Exec != "ls /" {
+			t.Error("exec value was " + serviceConfig.Exec)
+		}
+	}
+}
+
+func TestReadConfig_ReturnsConfig_WithGradleCommand(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
     gradle:
       module: my-api-module
       task: run
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if err != nil {
+		t.Error(err)
+	} else {
+		serviceConfig, ok := config.ServicesByName["my-api"]
+		if !ok {
+			t.Error("service is not present")
+		} else if serviceConfig.Name != "my-api" {
+			t.Errorf("expected name my-api, actual value was %s", serviceConfig.Name)
+		} else if serviceConfig.Gradle == nil {
+			t.Error("gradle config not present")
+		} else if serviceConfig.Gradle.Module != "my-api-module" {
+			t.Error("expected module my-api-module, actual value was " + serviceConfig.Gradle.Module)
+		} else if serviceConfig.Gradle.Task != "run" {
+			t.Error("expected task run, actual value was " + serviceConfig.Gradle.Task)
+		}
+	}
+}
+
+func TestReadConfig_ReturnsConfig_WithHealthcheck(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
+    healthcheck:
+      cmd: ls /
+      interval: 3
+      delay: 3
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if err != nil {
+		t.Error(err)
+	} else {
+		serviceConfig, ok := config.ServicesByName["my-api"]
+		if !ok {
+			t.Error("service is not present")
+		} else if serviceConfig.Healthcheck == nil {
+			t.Error("healthcheck missing")
+		} else if serviceConfig.Healthcheck.Cmd != "ls /" {
+			t.Error("healthcheck cmd incorrect")
+		} else if serviceConfig.Healthcheck.Delay != 3 {
+			t.Error("healthcheck delay incorrect")
+		} else if serviceConfig.Healthcheck.Interval != 3 {
+			t.Error("healthcheck interval incorrect")
+		}
+	}
+}
+
+func TestReadConfig_ReturnsConfig_WithDependsOnConfig(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
     depends_on:
      - postgres
   postgres:
-    gradle:
-      module: postgres
-      task: run
+    exec: ls /
 `)
 	defer cleanup(dir)
 
@@ -94,18 +174,110 @@ services:
 	serviceConfig, ok := config.ServicesByName["my-api"]
 	if !ok {
 		t.Error("service is not present")
-	} else if serviceConfig.Name != "my-api" {
-		t.Errorf("expected name my-api, actual value was %s", serviceConfig.Name)
-	} else if serviceConfig.Gradle == nil {
-		t.Error("gradle config not present")
-	} else if serviceConfig.Gradle.Module != "my-api-module" {
-		t.Error("expected module my-api-module, actual value was " + serviceConfig.Gradle.Module)
-	} else if serviceConfig.Gradle.Task != "run" {
-		t.Error("expected task run, actual value was " + serviceConfig.Gradle.Task)
-	} else if len(serviceConfig.DependsOn) == 0 {
-		t.Error("deps is empty")
 	} else if serviceConfig.DependsOn[0] != "postgres" {
 		t.Error("expected dep postgres, actual value was " + serviceConfig.DependsOn[0])
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenServiceSpecifiesMultipleExecutables(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    gradle:
+      module: my-api-module
+      task: run
+    exec: ls /
+`)
+	defer cleanup(dir)
+
+	_, err := ReadConfig(dir)
+
+	if err == nil {
+		t.Error("did not error")
+	} else if err.Error() != "service my-api cannot specify an executable command and a gradle task" {
+		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenServiceMissingExecutable(t *testing.T) {
+	dir := writeConfig(`
+services:
+  other-api:
+    gradle:
+      module: my-api-module
+      task: run
+  my-api:
+    depends_on:
+     - other-api
+`)
+	defer cleanup(dir)
+
+	_, err := ReadConfig(dir)
+
+	if err == nil {
+		t.Error("did not error")
+	} else if err.Error() != "service my-api missing executable config" {
+		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WithHealthcheckCmdMissing(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
+    healthcheck:
+      interval: 1
+`)
+	defer cleanup(dir)
+
+	_, err := ReadConfig(dir)
+
+	if err == nil {
+		t.Error("did not error")
+	} else if err.Error() != "service my-api is missing healthcheck cmd" {
+		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WithHealthcheckIntervalTooLow(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
+    healthcheck:
+      cmd: ls /
+      interval: 0
+`)
+	defer cleanup(dir)
+
+	_, err := ReadConfig(dir)
+
+	if err == nil {
+		t.Error("did not error")
+	} else if err.Error() != "service my-api needs a healthcheck interval of 1 or greater" {
+		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WithHealthcheckDelayTooLow(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-api:
+    exec: ls /
+    healthcheck:
+      cmd: ls /
+      interval: 1
+      delay: -1
+`)
+	defer cleanup(dir)
+
+	_, err := ReadConfig(dir)
+
+	if err == nil {
+		t.Error("did not error")
+	} else if err.Error() != "service my-api needs a healthcheck delay of 1 or greater" {
+		t.Error("err was: " + err.Error())
 	}
 }
 
