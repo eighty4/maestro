@@ -18,7 +18,6 @@ func InitServices(config *Config) {
 
 	fmt.Printf("service start order: %v\n", startOrder)
 	for _, dep := range startOrder {
-		// todo return status channel to coordinate starting dependent services
 		LaunchService(config.ServicesByName[dep])
 	}
 }
@@ -45,20 +44,22 @@ func sortServiceDeps(services []*ServiceConfig) ([]string, error) {
 
 func LaunchService(config *ServiceConfig) {
 	log.Println("starting service " + config.Name)
-	var command *exec.Cmd
-	if config.Gradle != nil {
-		command = exec.Command("./gradlew", "-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task))
+	var sCmd *exec.Cmd
+	if len(config.Exec) > 0 {
+		sCmd = createExecCmd(config.Exec)
+	} else if config.Gradle != nil {
+		sCmd = exec.Command("./gradlew", "-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task))
 	} else {
 		log.Fatalln("invalid service config?")
 	}
 
 	// todo color-coded service name appended to each log line
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
+	sCmd.Stdout = os.Stdout
+	sCmd.Stderr = os.Stderr
 
 	var hcTicker *time.Ticker
 	go func() {
-		err := command.Run()
+		err := sCmd.Run()
 		if err != nil {
 			log.Println(config.Name, err.Error())
 		}
@@ -79,10 +80,7 @@ func LaunchService(config *ServiceConfig) {
 					return
 				}
 
-				// todo support path expansions with sh (what about win?)
-				//hcCmd := exec.Command("sh", "-c", fmt.Sprintf("'%q'", config.Healthcheck.Cmd))
-				hcCmdSplit := strings.Fields(config.Healthcheck.Cmd)
-				hcCmd := exec.Command(hcCmdSplit[0], hcCmdSplit[1:]...)
+				hcCmd := createExecCmd(config.Healthcheck.Cmd)
 				err := hcCmd.Run()
 				if err != nil {
 					log.Printf("%s hc cmd (%s) err: %s\n", config.Name, config.Healthcheck.Cmd, err.Error())
@@ -95,4 +93,14 @@ func LaunchService(config *ServiceConfig) {
 			}
 		}()
 	}
+}
+
+func createExecCmd(execString string) *exec.Cmd {
+	binary, args := parseExecString(execString)
+	return exec.Command(binary, args...)
+}
+
+func parseExecString(execString string) (string, []string) {
+	execSplit := strings.Fields(execString)
+	return execSplit[0], execSplit[1:]
 }

@@ -20,6 +20,7 @@ type GradleTaskConfig struct {
 
 type ServiceConfig struct {
 	Name        string
+	Exec        string
 	Gradle      *GradleTaskConfig
 	Healthcheck *HealthcheckConfig
 	DependsOn   []string `yaml:"depends_on"`
@@ -50,14 +51,41 @@ func ReadConfig(dir string) (*Config, error) {
 	for name, service := range config.ServicesByName {
 		config.Services = append(config.Services, service)
 		service.Name = name
-		for _, dep := range service.DependsOn {
-			if _, ok := config.ServicesByName[dep]; !ok {
-				return nil, fmt.Errorf("%s has declared a dep on %s that does not exist", name, dep)
-			}
+		err = validateServiceConfig(service, config)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return &config, nil
+}
+
+func validateServiceConfig(service *ServiceConfig, config Config) error {
+	execSpecified := len(service.Exec) == 0
+	gradleSpecified := service.Gradle == nil
+	if execSpecified && gradleSpecified {
+		return fmt.Errorf("service %s missing executable config", service.Name)
+	}
+	if !execSpecified && !gradleSpecified {
+		return fmt.Errorf("service %s cannot specify an executable command and a gradle task", service.Name)
+	}
+	for _, dep := range service.DependsOn {
+		if _, ok := config.ServicesByName[dep]; !ok {
+			return fmt.Errorf("%s has declared a dep on %s that does not exist", service.Name, dep)
+		}
+	}
+	if service.Healthcheck != nil {
+		if len(service.Healthcheck.Cmd) == 0 {
+			return fmt.Errorf("service %s is missing healthcheck cmd", service.Name)
+		}
+		if service.Healthcheck.Interval < 1 {
+			return fmt.Errorf("service %s needs a healthcheck interval of 1 or greater", service.Name)
+		}
+		if service.Healthcheck.Delay < 0 {
+			return fmt.Errorf("service %s needs a healthcheck delay of 1 or greater", service.Name)
+		}
+	}
+	return nil
 }
 
 func configFile(dir string) string {
