@@ -6,11 +6,16 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
 )
 
-func InitServices(config *Config) {
+type MaestroContext struct {
+	WorkDir string
+}
+
+func InitServices(config *Config, context *MaestroContext) {
 	startOrder, err := sortServiceDeps(config.Services)
 	if err != nil {
 		log.Fatalln(err)
@@ -18,7 +23,7 @@ func InitServices(config *Config) {
 
 	fmt.Printf("service start order: %v\n", startOrder)
 	for _, dep := range startOrder {
-		LaunchService(config.ServicesByName[dep])
+		LaunchService(config.ServicesByName[dep], context)
 	}
 }
 
@@ -42,13 +47,22 @@ func sortServiceDeps(services []*ServiceConfig) ([]string, error) {
 	return sortedDeps, nil
 }
 
-func LaunchService(config *ServiceConfig) {
+func LaunchService(config *ServiceConfig, context *MaestroContext) {
 	log.Println("starting service " + config.Name)
 	var sCmd *exec.Cmd
 	if len(config.Exec) > 0 {
 		sCmd = createExecCmd(config.Exec)
 	} else if config.Gradle != nil {
 		sCmd = exec.Command("./gradlew", "-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task))
+	} else if config.Npm != nil {
+		npmRunCmdString := "npm run " + config.Npm.Script
+		if len(config.Npm.Args) > 0 {
+			npmRunCmdString += " -- " + config.Npm.Args
+		}
+		sCmd = createExecCmd(npmRunCmdString)
+		if len(config.Npm.RelDir) > 0 {
+			sCmd.Dir = path.Join(context.WorkDir, config.Npm.RelDir)
+		}
 	} else {
 		log.Fatalln("invalid service config?")
 	}

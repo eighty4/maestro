@@ -18,10 +18,17 @@ type GradleTaskConfig struct {
 	Task   string
 }
 
+type NpmScriptConfig struct {
+	Script string
+	Args   string
+	RelDir string `yaml:"rel_dir"`
+}
+
 type ServiceConfig struct {
 	Name        string
 	Exec        string
 	Gradle      *GradleTaskConfig
+	Npm         *NpmScriptConfig
 	Healthcheck *HealthcheckConfig
 	DependsOn   []string `yaml:"depends_on"`
 }
@@ -61,13 +68,20 @@ func ReadConfig(dir string) (*Config, error) {
 }
 
 func validateServiceConfig(service *ServiceConfig, config Config) error {
-	execSpecified := len(service.Exec) == 0
-	gradleSpecified := service.Gradle == nil
-	if execSpecified && gradleSpecified {
+	execSpecified := len(service.Exec) != 0
+	gradleSpecified := service.Gradle != nil
+	npmSpecified := service.Npm != nil
+	countSpecified := 0
+	for _, serviceSpecified := range []bool{execSpecified, gradleSpecified, npmSpecified} {
+		if serviceSpecified {
+			countSpecified++
+		}
+	}
+	if countSpecified == 0 {
 		return fmt.Errorf("service %s missing executable config", service.Name)
 	}
-	if !execSpecified && !gradleSpecified {
-		return fmt.Errorf("service %s cannot specify an executable command and a gradle task", service.Name)
+	if countSpecified > 1 {
+		return fmt.Errorf("service %s cannot specify multiple executable configs", service.Name)
 	}
 	for _, dep := range service.DependsOn {
 		if _, ok := config.ServicesByName[dep]; !ok {
@@ -84,6 +98,12 @@ func validateServiceConfig(service *ServiceConfig, config Config) error {
 		if service.Healthcheck.Delay < 0 {
 			return fmt.Errorf("service %s needs a healthcheck delay of 1 or greater", service.Name)
 		}
+	}
+	if service.Npm != nil && len(service.Npm.Script) == 0 {
+		return fmt.Errorf("service %s is missing script to run", service.Name)
+	}
+	if service.Gradle != nil && len(service.Gradle.Task) == 0 {
+		return fmt.Errorf("service %s is missing task to run", service.Name)
 	}
 	return nil
 }

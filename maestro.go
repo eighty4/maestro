@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	wd, err := os.Getwd()
+	workDir, err := os.Getwd()
 	if err != nil {
 		log.Fatal("could not get cwd", err)
 	}
-	config, err := ReadConfig(wd)
+	config, err := ReadConfig(workDir)
 	if err != nil {
 		log.Fatalf("could not read config: %s", err)
 	}
@@ -18,7 +18,7 @@ func main() {
 	if config == nil {
 		// todo read build.gradle, package.json, docker-compose.yml for services to create
 	} else {
-		InitServices(config)
+		InitServices(config, &MaestroContext{workDir})
 		select {}
 	}
 }
