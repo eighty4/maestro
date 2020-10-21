@@ -115,6 +115,39 @@ services:
 	}
 }
 
+func TestReadConfig_ReturnsConfig_WithNpmScript(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-ui:
+    npm:
+      script: start
+      args: foo bar
+      rel_dir: my/package
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if err != nil {
+		t.Error(err)
+	} else {
+		serviceConfig, ok := config.ServicesByName["my-ui"]
+		if !ok {
+			t.Error("service is not present")
+		} else if serviceConfig.Name != "my-ui" {
+			t.Errorf("expected name my-ui, actual value was %s", serviceConfig.Name)
+		} else if serviceConfig.Npm == nil {
+			t.Error("npm config not present")
+		} else if serviceConfig.Npm.Script != "start" {
+			t.Error("expected script start, actual value was " + serviceConfig.Npm.Script)
+		} else if serviceConfig.Npm.Args != "foo bar" {
+			t.Error("expected args 'foo bar', actual value was " + serviceConfig.Npm.Args)
+		} else if serviceConfig.Npm.RelDir != "my/package" {
+			t.Error("expected rel dir my/package, actual value was " + serviceConfig.Npm.RelDir)
+		}
+	}
+}
+
 func TestReadConfig_ReturnsConfig_WithHealthcheck(t *testing.T) {
 	dir := writeConfig(`
 services:
@@ -194,7 +227,7 @@ services:
 
 	if err == nil {
 		t.Error("did not error")
-	} else if err.Error() != "service my-api cannot specify an executable command and a gradle task" {
+	} else if err.Error() != "service my-api cannot specify multiple executable configs" {
 		t.Error("err was: " + err.Error())
 	}
 }
@@ -301,5 +334,46 @@ services:
 		t.Error("error is nil")
 	} else if !strings.Contains(err.Error(), "has declared a dep on") {
 		t.Error("error was not for missing dep")
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenNpmConfigIsMissingScript(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-ui:
+    npm:
+      args: foo bar
+      rel_dir: my/package
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if config != nil {
+		t.Error("config is not nil")
+	} else if err == nil {
+		t.Error("error is nil")
+	} else if err.Error() != "service my-ui is missing script to run" {
+		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenGradleConfigIsMissingTask(t *testing.T) {
+	dir := writeConfig(`
+services:
+  my-service:
+    gradle:
+      module: foobar
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if config != nil {
+		t.Error("config is not nil")
+	} else if err == nil {
+		t.Error("error is nil")
+	} else if err.Error() != "service my-service is missing task to run" {
+		t.Error("err was: " + err.Error())
 	}
 }
