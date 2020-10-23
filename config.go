@@ -64,6 +64,11 @@ func ReadConfig(dir string) (*MaestroConfig, error) {
 		}
 	}
 
+	err = validateResolvableServiceDependencies(&config)
+	if err != nil {
+		return nil, err
+	}
+
 	return &config, nil
 }
 
@@ -104,6 +109,24 @@ func validateServiceConfig(service *ServiceConfig, config *MaestroConfig) error 
 	}
 	if service.Gradle != nil && len(service.Gradle.Task) == 0 {
 		return fmt.Errorf("service %s is missing task to run", service.Name)
+	}
+	return nil
+}
+
+func validateResolvableServiceDependencies(config *MaestroConfig) error {
+	resolvable := false
+	for _, service := range config.Services {
+		resolvable = resolvable || len(service.DependsOn) == 0
+		for _, thisServiceDep := range service.DependsOn {
+			for _, thatServiceDep := range config.ServicesByName[thisServiceDep].DependsOn {
+				if service.Name == thatServiceDep {
+					return fmt.Errorf(thatServiceDep + " has a circular dependency with " + thisServiceDep)
+				}
+			}
+		}
+	}
+	if !resolvable {
+		return fmt.Errorf("at least one service needs to be launchable without a dependency")
 	}
 	return nil
 }
