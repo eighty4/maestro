@@ -35,19 +35,6 @@ func TestReadConfig_ReturnsWithoutConfigOrError_WhenNoConfigFileMissing(t *testi
 	}
 }
 
-func TestReadConfig_ReturnsConfig_WhenConfigFilePresent(t *testing.T) {
-	dir := writeConfig("")
-	defer cleanup(dir)
-
-	config, _ := ReadConfig(dir)
-
-	if config == nil {
-		t.Error("config should not have been nil")
-	} else if len(config.Services) != 0 {
-		t.Error("config services should be empty")
-	}
-}
-
 func TestReadConfig_ReturnsError_WhenConfigIsMalformedYaml(t *testing.T) {
 	dir := writeConfig("	invalid	")
 	defer cleanup(dir)
@@ -334,6 +321,62 @@ services:
 		t.Error("error is nil")
 	} else if !strings.Contains(err.Error(), "has declared a dep on") {
 		t.Error("error was not for missing dep")
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenCircularDependencyPresent(t *testing.T) {
+	dir := writeConfig(`
+services:
+  this-api:
+    exec: ls /
+    depends_on:
+     - that-api
+  that-api:
+    exec: ls /
+    depends_on:
+     - this-api
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if config != nil {
+		t.Error("config should be nil")
+	}
+	if err == nil {
+		t.Error("error is nil")
+	} else if !strings.Contains(err.Error(), "has a circular dependency with") {
+		t.Error("error was: " + err.Error())
+	}
+}
+
+func TestReadConfig_ReturnsError_WhenUnresolvableWithoutDependencyFreeService(t *testing.T) {
+	dir := writeConfig(`
+services:
+  this-api:
+    exec: ls /
+    depends_on:
+     - that-api
+  that-api:
+    exec: ls /
+    depends_on:
+     - another-api
+  another-api:
+    exec: ls /
+    depends_on:
+     - this-api
+`)
+	defer cleanup(dir)
+
+	config, err := ReadConfig(dir)
+
+	if config != nil {
+		t.Error("config should be nil")
+	}
+	if err == nil {
+		t.Error("error is nil")
+	} else if err.Error() != "at least one service needs to be launchable without a dependency" {
+		t.Error("error was: " + err.Error())
 	}
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/otaviokr/topological-sort/toposort"
 	"log"
 	"os"
 	"os/exec"
@@ -121,20 +120,14 @@ func (sp *ServiceProcess) runServiceHealthcheck(status chan<- ServiceStatus) {
 }
 
 func InitServices(config *MaestroConfig, context *MaestroContext) {
-	startOrder, err := sortServiceDeps(config.Services)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("service start order: %v\n", startOrder)
 	pending := map[string][]string{}
 	var ready []string
 	services := map[string]*ServiceProcess{}
-	for _, serviceName := range startOrder {
-		serviceConfig := config.ServicesByName[serviceName]
+	for _, serviceConfig := range config.Services {
 		serviceProcess := NewServiceProcess(serviceConfig, context)
-		services[serviceName] = serviceProcess
+		services[serviceConfig.Name] = serviceProcess
 		if len(serviceConfig.DependsOn) == 0 {
-			ready = append(ready, serviceName)
+			ready = append(ready, serviceConfig.Name)
 		} else {
 			pending[serviceConfig.Name] = append([]string(nil), serviceConfig.DependsOn...)
 		}
@@ -190,26 +183,6 @@ func InitServices(config *MaestroConfig, context *MaestroContext) {
 	for _, serviceName := range ready {
 		go launchService(serviceName)
 	}
-}
-
-func IsCircularDepError(err error) bool {
-	return strings.HasPrefix(err.Error(), "circular dep found for service")
-}
-
-func sortServiceDeps(services []*ServiceConfig) ([]string, error) {
-	depTree := map[string][]string{}
-	for _, serviceConfig := range services {
-		depTree[serviceConfig.Name] = serviceConfig.DependsOn
-	}
-	sortedDeps, err := toposort.ReverseTarjan(depTree)
-	if err != nil {
-		if strings.HasPrefix(err.Error(), "Found cycle at node") {
-			return nil, fmt.Errorf("circular dep found for service " + strings.Split(err.Error(), ":")[1][1:])
-		} else {
-			return nil, err
-		}
-	}
-	return sortedDeps, nil
 }
 
 func createServiceCommand(config *ServiceConfig, context *MaestroContext) *exec.Cmd {
