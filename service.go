@@ -103,10 +103,8 @@ func (sp *ServiceProcess) runServiceHealthcheck(status chan<- ServiceStatus) {
 		if err != nil && healthcheckCommand.ProcessState.ExitCode() == -1 {
 			log.Fatalf("%s healthcheck cmd is mis-configured: %s\n", sp.Config.Name, err.Error())
 		} else if healthcheckCommand.ProcessState.ExitCode() > 0 {
-			//log.Println(sp.Config.Name + " hc failing")
 			status <- Failing
 		} else {
-			//log.Println(sp.Config.Name + " hc healthy")
 			status <- Healthy
 		}
 		if sp.HealthcheckTicker != nil {
@@ -186,7 +184,8 @@ func createServiceCommand(config *ServiceConfig, context *MaestroContext) *exec.
 	if len(config.Exec) > 0 {
 		serviceCommand = createExecCmd(config.Exec)
 	} else if config.Gradle != nil {
-		serviceCommand = exec.Command("./gradlew", "-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task))
+		task := fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)
+		serviceCommand = exec.Command("./gradlew", "-q", "--console=plain", task)
 	} else if config.Npm != nil {
 		npmRunCmdString := "npm run " + config.Npm.Script
 		if len(config.Npm.Args) > 0 {
@@ -194,13 +193,13 @@ func createServiceCommand(config *ServiceConfig, context *MaestroContext) *exec.
 		}
 		serviceCommand = createExecCmd(npmRunCmdString)
 		if len(config.Npm.RelDir) > 0 {
+			context.Path(config.Npm.RelDir)
 			serviceCommand.Dir = path.Join(context.WorkDir, config.Npm.RelDir)
 		}
 	} else {
 		log.Fatalln("invalid service config?")
 	}
 
-	// todo color-coded service name appended to each log line
 	serviceCommand.Stdout = os.Stdout
 	serviceCommand.Stderr = os.Stderr
 	return serviceCommand
