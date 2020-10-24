@@ -38,7 +38,7 @@ func TestCreateServiceCommand_ForExecutableCommand(t *testing.T) {
 	}
 	dir := tempDir()
 	defer cleanup(dir)
-	context := &MaestroContext{dir}
+	context := &MaestroContext{dir, nil}
 	command := createServiceCommand(config, context)
 	if command.Path != "/bin/ls" {
 		t.Error("command should have been /bin/ls but was " + command.Path)
@@ -54,7 +54,7 @@ func TestCreateServiceCommand_ForGradleTask(t *testing.T) {
 	}
 	dir := tempDir()
 	defer cleanup(dir)
-	context := &MaestroContext{dir}
+	context := &MaestroContext{dir, nil}
 	command := createServiceCommand(config, context)
 	if command.Path != "./gradlew" {
 		t.Error("command should have been ./gradlew but was " + command.Path)
@@ -70,7 +70,7 @@ func TestCreateServiceCommand_ForNpmScript(t *testing.T) {
 	}
 	dir := tempDir()
 	defer cleanup(dir)
-	context := &MaestroContext{dir}
+	context := &MaestroContext{dir, nil}
 	command := createServiceCommand(config, context)
 	if command.Path != "/usr/local/bin/npm" { // todo fix not portable
 		t.Error("command should have been /usr/local/bin/npm but was " + command.Path)
