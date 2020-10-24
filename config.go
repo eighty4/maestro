@@ -33,12 +33,12 @@ type ServiceConfig struct {
 	DependsOn   []string `yaml:"depends_on"`
 }
 
-type MaestroConfig struct {
+type ConfigFile struct {
 	Services       []*ServiceConfig          `yaml:"-"`
 	ServicesByName map[string]*ServiceConfig `yaml:"services"`
 }
 
-func ReadConfig(dir string) (*MaestroConfig, error) {
+func ReadConfig(dir string) (*ConfigFile, error) {
 	file := configFile(dir)
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -49,7 +49,7 @@ func ReadConfig(dir string) (*MaestroConfig, error) {
 		}
 	}
 
-	var config MaestroConfig
+	var config ConfigFile
 	err = yaml.Unmarshal(content, &config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse yaml from %s: %s", file, err.Error())
@@ -72,7 +72,7 @@ func ReadConfig(dir string) (*MaestroConfig, error) {
 	return &config, nil
 }
 
-func validateServiceConfig(service *ServiceConfig, config *MaestroConfig) error {
+func validateServiceConfig(service *ServiceConfig, config *ConfigFile) error {
 	execSpecified := len(service.Exec) != 0
 	gradleSpecified := service.Gradle != nil
 	npmSpecified := service.Npm != nil
@@ -113,7 +113,7 @@ func validateServiceConfig(service *ServiceConfig, config *MaestroConfig) error 
 	return nil
 }
 
-func validateResolvableServiceDependencies(config *MaestroConfig) error {
+func validateResolvableServiceDependencies(config *ConfigFile) error {
 	resolvable := false
 	for _, service := range config.Services {
 		resolvable = resolvable || len(service.DependsOn) == 0

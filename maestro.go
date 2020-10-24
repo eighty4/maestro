@@ -2,23 +2,18 @@ package main
 
 import (
 	"log"
-	"os"
 )
 
 func main() {
-	workDir, err := os.Getwd()
+	context, err := NewMaestroContext()
 	if err != nil {
-		log.Fatal("could not get cwd", err)
-	}
-	config, err := ReadConfig(workDir)
-	if err != nil {
-		log.Fatalf("could not read config: %s", err)
+		log.Fatalln(err)
 	}
 
-	if config == nil {
+	if context.ConfigFile == nil {
 		// todo read build.gradle, package.json, docker-compose.yml for services to create
 	} else {
-		InitServices(config, &MaestroContext{workDir})
+		InitServices(context)
 		select {}
 	}
 }

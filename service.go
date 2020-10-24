@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-type MaestroContext struct {
-	WorkDir string
-}
-
 type ServiceStatus uint8
 
 const (
@@ -119,11 +115,11 @@ func (sp *ServiceProcess) runServiceHealthcheck(status chan<- ServiceStatus) {
 	}
 }
 
-func InitServices(config *MaestroConfig, context *MaestroContext) {
+func InitServices(context *MaestroContext) {
 	pending := map[string][]string{}
 	var ready []string
 	services := map[string]*ServiceProcess{}
-	for _, serviceConfig := range config.Services {
+	for _, serviceConfig := range context.Services {
 		serviceProcess := NewServiceProcess(serviceConfig, context)
 		services[serviceConfig.Name] = serviceProcess
 		if len(serviceConfig.DependsOn) == 0 {
