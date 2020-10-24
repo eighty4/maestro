@@ -9,11 +9,18 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	if context.ConfigFile == nil {
-		// todo read build.gradle, package.json, docker-compose.yml for services to create
-	} else {
-		InitServices(context)
-		select {}
+	switch context.Command.Op {
+	case Process:
+		if context.ConfigFile == nil {
+			// todo read build.gradle, package.json, docker-compose.yml for services to create
+		} else {
+			InitServices(context)
+			CreateLogSocket(context)
+			select {}
+		}
+		break
+	case Logs:
+		ConnectLogSocket(context)
+		break
 	}
 }
