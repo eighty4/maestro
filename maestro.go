@@ -26,6 +26,7 @@ func main() {
 		}
 		break
 	case Logs:
+		ConnectLogSocket(context)
 		break
 	}
 }
