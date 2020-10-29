@@ -9,14 +9,14 @@ import (
 type CliOp uint8
 
 const (
-	Process = iota
+	Main = iota
 	Logs
 )
 
 func CliOpString(op CliOp) string {
 	switch op {
-	case Process:
-		return "process"
+	case Main:
+		return "main"
 	case Logs:
 		return "logs"
 	default:
@@ -36,7 +36,11 @@ type MaestroContext struct {
 }
 
 func (mc *MaestroContext) Path(relPath string) string {
-	return path.Join(mc.WorkDir, relPath)
+	if len(relPath) == 0 {
+		return mc.WorkDir
+	} else {
+		return path.Join(mc.WorkDir, relPath)
+	}
 }
 
 func NewMaestroContext() (*MaestroContext, error) {
@@ -52,7 +56,7 @@ func NewMaestroContext() (*MaestroContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse command: %s", err.Error())
 	}
-	if command.Op != Process && config == nil {
+	if command.Op != Main && config == nil {
 		return nil, fmt.Errorf("could not find project config to run command %s. first use command 'maestro' from this directory to create a project configuration", CliOpString(command.Op))
 	}
 	context := &MaestroContext{
@@ -65,7 +69,7 @@ func NewMaestroContext() (*MaestroContext, error) {
 
 func parseCommand() (*CliCommand, error) {
 	if len(os.Args) == 1 {
-		return &CliCommand{Op: Process}, nil
+		return &CliCommand{Op: Main}, nil
 	}
 	switch os.Args[1] {
 	case "logs", "log":

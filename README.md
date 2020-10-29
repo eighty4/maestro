@@ -5,7 +5,7 @@ this is a developer utility to configure and manage services and platform compon
 ```
 git clone https://github.com/eighty4/maestro.git
 cd maestro
-go build -o build/maestro maestro.go config.go service.go
+./install.sh
 ```
 add the location from `cd build && pwd` to your $PATH
 
