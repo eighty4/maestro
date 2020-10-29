@@ -35,6 +35,7 @@ func (l *Logger) Write(bytes []byte) (int, error) {
 	l.mutex.Unlock()
 	select {
 	case l.Logs <- string(bytes):
+	default:
 	}
 	return len(bytes), nil
 }

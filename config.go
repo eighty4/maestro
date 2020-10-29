@@ -38,6 +38,17 @@ type ConfigFile struct {
 	ServicesByName map[string]*ServiceConfig `yaml:"services"`
 }
 
+func NewConfig(services []*ServiceConfig) *ConfigFile {
+	servicesByName := make(map[string]*ServiceConfig)
+	for _, service := range services {
+		servicesByName[service.Name] = service
+	}
+	return &ConfigFile{
+		Services:       services,
+		ServicesByName: servicesByName,
+	}
+}
+
 func ReadConfig(dir string) (*ConfigFile, error) {
 	file := configFile(dir)
 	content, err := ioutil.ReadFile(file)

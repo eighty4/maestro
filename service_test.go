@@ -1,50 +1,23 @@
 package main
 
-import "testing"
-
-func TestParseExecString_WithBinaryOnly(t *testing.T) {
-	binary, args := parseExecString("foo")
-	if binary != "foo" {
-		t.Error("binary should have been foo but was " + binary)
-	}
-	if len(args) != 0 {
-		t.Error("args should have been [] but was", args)
-	}
-}
-
-func TestParseExecString_WithArgs(t *testing.T) {
-	binary, args := parseExecString("foo bar")
-	if binary != "foo" {
-		t.Error("binary should have been foo but was " + binary)
-	}
-	if len(args) != 1 || args[0] != "bar" {
-		t.Error("args should have been [bar] but was", args)
-	}
-}
-
-func TestCreateExecCommand(t *testing.T) {
-	cmd := createExecCmd("foo bar")
-	if cmd.Path != "foo" {
-		t.Error("cmd should have been foo but was " + cmd.Path)
-	}
-	if len(cmd.Args) != 2 || cmd.Args[0] != "foo" || cmd.Args[1] != "bar" {
-		t.Error("cmd.Args should have been [foo bar] but was", cmd.Args)
-	}
-}
+import (
+	"testing"
+	"time"
+)
 
 func TestCreateServiceCommand_ForExecutableCommand(t *testing.T) {
 	config := &ServiceConfig{
 		Exec: "ls /",
 	}
-	dir := tempDir()
-	defer cleanup(dir)
-	context := &MaestroContext{dir, nil, nil}
-	command := createServiceCommand(config, context)
-	if command.Path != "/bin/ls" {
-		t.Error("command should have been /bin/ls but was " + command.Path)
+	context := &MaestroContext{WorkDir: tempDir()}
+	defer cleanup(context.WorkDir)
+
+	command := NewServiceProcess(config, context)
+	if command.Binary != "ls" {
+		t.Error(command.Binary)
 	}
-	if len(command.Args) != 2 || command.Args[0] != "ls" || command.Args[1] != "/" {
-		t.Error("command.Args should have been [foo bar] but was", command.Args)
+	if len(command.Args) != 1 || command.Args[0] != "/" {
+		t.Error(command.Args)
 	}
 }
 
@@ -52,15 +25,15 @@ func TestCreateServiceCommand_ForGradleTask(t *testing.T) {
 	config := &ServiceConfig{
 		Gradle: &GradleTaskConfig{"my-module", "my-task"},
 	}
-	dir := tempDir()
-	defer cleanup(dir)
-	context := &MaestroContext{dir, nil, nil}
-	command := createServiceCommand(config, context)
-	if command.Path != "./gradlew" {
-		t.Error("command should have been ./gradlew but was " + command.Path)
+	context := &MaestroContext{WorkDir: tempDir()}
+	defer cleanup(context.WorkDir)
+
+	command := NewServiceProcess(config, context)
+	if command.Binary != "./gradlew" {
+		t.Error(command.Binary)
 	}
-	if len(command.Args) != 4 || command.Args[0] != "./gradlew" || command.Args[1] != "-q" || command.Args[2] != "--console=plain" || command.Args[3] != "my-module:my-task" {
-		t.Error("command.Args should have been [./gradlew -q --console=plain my-module:my-task] but was", command.Args)
+	if len(command.Args) != 3 || command.Args[0] != "-q" || command.Args[1] != "--console=plain" || command.Args[2] != "my-module:my-task" {
+		t.Error(command.Args)
 	}
 }
 
@@ -68,69 +41,118 @@ func TestCreateServiceCommand_ForNpmScript(t *testing.T) {
 	config := &ServiceConfig{
 		Npm: &NpmScriptConfig{"start", "--foo=bar", "my-yarn-workspace"},
 	}
-	dir := tempDir()
-	defer cleanup(dir)
-	context := &MaestroContext{dir, nil, nil}
-	command := createServiceCommand(config, context)
-	if command.Path != "/usr/local/bin/npm" { // todo fix not portable
-		t.Error("command should have been /usr/local/bin/npm but was " + command.Path)
+	context := &MaestroContext{WorkDir: tempDir()}
+	defer cleanup(context.WorkDir)
+
+	command := NewServiceProcess(config, context)
+	if command.Binary != "npm" {
+		t.Error(command.Binary)
 	}
-	if len(command.Args) != 5 || command.Args[0] != "npm" || command.Args[1] != "run" || command.Args[2] != "start" || command.Args[3] != "--" || command.Args[4] != "--foo=bar" {
-		t.Error("command.Args should have been [npm run start -- --foo=bar] but was", command.Args)
+	if len(command.Args) != 4 || command.Args[0] != "run" || command.Args[1] != "start" || command.Args[2] != "--" || command.Args[3] != "--foo=bar" {
+		t.Error(command.Args)
 	}
-	if command.Dir != dir+"/my-yarn-workspace" {
-		t.Error("command.Dir should have been $TMP_DIR/my-yarn-workspace but was", command.Dir)
+	if command.Dir != context.WorkDir+"/my-yarn-workspace" {
+		t.Error(command.Dir)
 	}
 }
 
-func TestServiceProcess_EmitsServiceRunningAndStopped(t *testing.T) {
+func TestManagedService_WithoutHealthcheck_EmitsRunning(t *testing.T) {
 	config := &ServiceConfig{
-		Exec: "sleep 0",
+		Exec: "sleep 2",
 	}
-	status := NewServiceProcess(config, &MaestroContext{}).Launch()
-	next := <-status
-	if next != Starting {
-		t.Error("should have returned Starting but was " + ServiceStatusString(next))
+	context := &MaestroContext{WorkDir: tempDir()}
+	defer cleanup(context.WorkDir)
+
+	service := NewManagedService(config, context)
+	status := service.Launch()
+
+	if next := <-status; next != ServiceStarting {
+		t.Error(next)
 	}
-	if next = <-status; next != Running {
-		t.Error("should have returned Running but was " + ServiceStatusString(next))
-	}
-	if next = <-status; next != Stopped {
-		t.Error("should have returned Stopped but was " + ServiceStatusString(next))
+	if next := <-status; next != ServiceRunning {
+		t.Error(next)
 	}
 }
 
-func TestServiceProcess_EmitsServiceError(t *testing.T) {
+func TestManagedService_WithHealthcheck_EmitsHealthy(t *testing.T) {
 	config := &ServiceConfig{
-		Exec: "sleep 0 && (exit 1)",
-	}
-	status := NewServiceProcess(config, &MaestroContext{}).Launch()
-	next := <-status
-	if next != Starting {
-		t.Error("should have returned Starting but was " + ServiceStatusString(next))
-	}
-	if next = <-status; next != Running {
-		t.Error("should have returned Running but was " + ServiceStatusString(next))
-	}
-	if next = <-status; next != Error {
-		t.Error("should have returned Error but was " + ServiceStatusString(next))
-	}
-}
-
-func TestServiceProcess_WithHealthcheck_EmitsHealthy(t *testing.T) {
-	config := &ServiceConfig{
-		Exec: "sleep 1",
+		Exec: "sleep 2",
 		Healthcheck: &HealthcheckConfig{
 			Cmd:      "ls /",
 			Interval: 1,
 		},
 	}
-	status := NewServiceProcess(config, &MaestroContext{}).Launch()
-	next := <-status
-	if next != Starting {
-		t.Error("should have returned Starting but was " + ServiceStatusString(next))
+	context := &MaestroContext{WorkDir: tempDir()}
+	defer cleanup(context.WorkDir)
+
+	service := NewManagedService(config, context)
+	status := service.Launch()
+
+	if next := <-status; next != ServiceStarting {
+		t.Error(next)
 	}
-	if next = <-status; next != Healthy {
-		t.Error("should have returned Healthy but was " + ServiceStatusString(next))
+	if next := <-status; next != ServiceHealthy {
+		t.Error(next)
+	}
+}
+
+func TestInitServices_HandlesDependsOn(t *testing.T) {
+	context := &MaestroContext{
+		ConfigFile: NewConfig([]*ServiceConfig{{
+			Name: "one",
+			Exec: "sleep 9000",
+		}, {
+			Name: "two",
+			Exec: "sleep 9000",
+			DependsOn: []string{"one"},
+		}}),
+	}
+
+	InitServices(context)
+
+	time.Sleep(100 * time.Millisecond)
+
+	if services["two"].Process.Status != ServiceRunning {
+		t.Error(services["two"].Process.Status)
+	}
+}
+
+func TestInitServices_HandlesDependsOn_WithHealthcheck(t *testing.T) {
+	context := &MaestroContext{
+		ConfigFile: NewConfig([]*ServiceConfig{{
+			Name: "one",
+			Exec: "sleep 9000",
+			Healthcheck: &HealthcheckConfig{
+				Cmd:      "ls /",
+				Interval: 1,
+				Delay:    1,
+			},
+		}, {
+			Name: "two",
+			Exec: "sleep 9000",
+			DependsOn: []string{"one"},
+		}}),
+	}
+
+	InitServices(context)
+
+	time.Sleep(100 * time.Millisecond)
+
+	if services["one"].Status != ServiceStarting {
+		t.Error(services["one"].Status)
+	}
+
+	if services["two"].Status != ServiceStopped {
+		t.Error(services["two"].Status)
+	}
+
+	time.Sleep(1000 * time.Millisecond)
+
+	if services["one"].Status != ServiceHealthy {
+		t.Error(services["one"].Status)
+	}
+
+	if services["two"].Status != ServiceRunning {
+		t.Error(services["two"].Status)
 	}
 }
