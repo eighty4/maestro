@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 )
@@ -68,19 +69,24 @@ func NewMaestroContext() (*MaestroContext, error) {
 }
 
 func parseCommand() (*CliCommand, error) {
-	if len(os.Args) == 1 {
+	if os.Args[0] != "maestro" {
+		log.Println("skipping args parsing")
 		return &CliCommand{Op: Main}, nil
-	}
-	switch os.Args[1] {
-	case "logs", "log":
-		if len(os.Args) == 2 {
-			return &CliCommand{Op: Logs}, nil
-		} else if len(os.Args) == 3 {
-			return &CliCommand{Op: Logs, ServiceName: os.Args[2]}, nil
-		} else {
-			return nil, fmt.Errorf("log command must be in format 'maestro logs my-service-name'")
+	} else {
+		if len(os.Args) == 1 {
+			return &CliCommand{Op: Main}, nil
 		}
-	default:
-		return nil, fmt.Errorf("command %s is not a valid command", os.Args[1])
+		switch os.Args[1] {
+		case "logs", "log":
+			if len(os.Args) == 2 {
+				return &CliCommand{Op: Logs}, nil
+			} else if len(os.Args) == 3 {
+				return &CliCommand{Op: Logs, ServiceName: os.Args[2]}, nil
+			} else {
+				return nil, fmt.Errorf("log command must be in format 'maestro logs my-service-name'")
+			}
+		default:
+			return nil, fmt.Errorf("command %s is not a valid command", os.Args[1])
+		}
 	}
 }

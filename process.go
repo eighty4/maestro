@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"os/exec"
 	"strings"
@@ -10,26 +10,10 @@ import (
 type ProcessStatus string
 
 const (
-	ProcessStarting = "Starting" // initial status
 	ProcessRunning  = "Running"  // running service
 	ProcessStopped  = "Stopped"  // stopped service with exit code 0
 	ProcessError    = "Error"    // stopped service with non-zero exit code
 )
-
-func ProcessStatusString(status ProcessStatus) string {
-	switch status {
-	case ProcessStarting:
-		return "Starting"
-	case ProcessRunning:
-		return "Running"
-	case ProcessStopped:
-		return "Stopped"
-	case ProcessError:
-		return "Error"
-	default:
-		return "Unknown"
-	}
-}
 
 type Process struct {
 	Binary       string
@@ -40,6 +24,7 @@ type Process struct {
 	Status       ProcessStatus
 	StatusUpdate chan ProcessStatus `json:"-"`
 	Command      *exec.Cmd          `json:"-"`
+	termFunc     func()
 }
 
 func NewProcess(binary string, args []string, dir string) *Process {
@@ -58,16 +43,21 @@ func NewProcessFromExecString(execString string, dir string) *Process {
 }
 
 func (p *Process) Start() {
-	p.Command = exec.Command(p.Binary, p.Args...)
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	p.termFunc = cancelFunc
+	p.Command = exec.CommandContext(ctx, p.Binary, p.Args...)
 	p.Command.Dir = p.Dir
 	p.Logging = NewProcessLogger(p.Command)
 	p.updateStatus(ProcessRunning)
 	err := p.Command.Run()
-	if err != nil && p.Command.ProcessState.ExitCode() == -1 {
-		log.Fatalf("cmd is mis-configured: %s\n", err.Error())
-	} else if p.Command.ProcessState.ExitCode() > 0 {
-		//log.Printf("%s exited with status %d", p.Binary, p.Command.ProcessState.ExitCode())
-		p.updateStatus(ProcessError)
+	if err != nil {
+		if err.Error() == "signal: killed" {
+			p.updateStatus(ProcessStopped)
+		} else if p.Command != nil && p.Command.ProcessState != nil && p.Command.ProcessState.ExitCode() == -1 {
+			log.Fatalf("cmd is mis-configured: %s\n", err.Error())
+		} else {
+			p.updateStatus(ProcessError)
+		}
 	} else {
 		p.updateStatus(ProcessStopped)
 	}
@@ -75,7 +65,7 @@ func (p *Process) Start() {
 
 func (p *Process) Restart() {
 	if p.Command != nil && p.Command.ProcessState != nil && !p.Command.ProcessState.Exited() {
-		log.Fatalln("restarting running process")
+		p.Stop()
 	}
 	p.Start()
 }
@@ -84,9 +74,17 @@ func (p *Process) updateStatus(status ProcessStatus) {
 	p.Status = status
 	select {
 	case p.StatusUpdate <- status:
-		fmt.Println("sending status " + ProcessStatusString(status))
 	default:
 	}
+}
+
+func (p *Process) Stop() {
+	if p.termFunc != nil {
+		p.termFunc()
+		p.termFunc = nil
+	}
+	p.Command = nil
+	p.updateStatus(ProcessStopped)
 }
 
 func ParseExecString(execString string) (string, []string) {

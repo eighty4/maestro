@@ -3,140 +3,134 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
-	"path"
-	"strings"
 	"sync"
-	"time"
 )
 
-type ServiceStatus uint8
+type ServiceStatus string
 
 const (
-	Starting = iota // initial status before run or healthcheck
-	Running         // running service w/o healthcheck
-	Healthy         // running service with passing healthcheck
-	Failing         // running service with failing healthcheck
-	Stopped         // stopped service with exit code 0
-	Error           // stopped service with non-zero exit code
+	ServiceStarting = "Starting" // initial status before run or healthcheck
+	ServiceRunning  = "Running"  // running service w/o healthcheck
+	ServiceHealthy  = "Healthy"  // running service with passing healthcheck
+	ServiceFailing  = "Failing"  // running service with failing healthcheck
+	ServiceStopped  = "Stopped"  // stopped service with exit code 0
+	ServiceError    = "Error"    // stopped service with non-zero exit code
 )
 
-func ServiceStatusString(status ServiceStatus) string {
-	switch status {
-	case Starting:
-		return "Starting"
-	case Running:
-		return "Running"
-	case Healthy:
-		return "Healthy"
-	case Failing:
-		return "Failing"
-	case Stopped:
-		return "Stopped"
-	case Error:
-		return "Error"
-	default:
-		return "Unknown"
-	}
-}
+// todo buffer holding all log data from a service (GET /logs/${serviceName})
+// todo non-blocking channel for new logs used by browser sse and log udp connections
+// todo restart and stop process commands
 
-type ServiceProcess struct {
-	Context           *MaestroContext
-	Config            *ServiceConfig
-	Command           *exec.Cmd
-	HealthcheckTicker *time.Ticker
-}
-
-func NewServiceProcess(serviceConfig *ServiceConfig, context *MaestroContext) *ServiceProcess {
-	return &ServiceProcess{
-		Command: createServiceCommand(serviceConfig, context),
-		Config:  serviceConfig,
-		Context: context,
-	}
-}
-
-func (sp *ServiceProcess) Launch() <-chan ServiceStatus {
-	status := make(chan ServiceStatus)
-	go func() {
-		status <- Starting
-		if sp.Config.Healthcheck == nil {
-			go sp.runServiceProcess(status)
-			status <- Running
-		} else {
-			go sp.runServiceProcess(status)
-			go sp.runServiceHealthcheck(status)
+func NewServiceProcess(config *ServiceConfig, context *MaestroContext) *Process {
+	if len(config.Exec) > 0 {
+		return NewProcessFromExecString(config.Exec, context.WorkDir)
+	} else if config.Gradle != nil {
+		args := []string{"-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)}
+		return NewProcess("./gradlew", args, context.WorkDir)
+	} else if config.Npm != nil {
+		args := []string{"run", config.Npm.Script}
+		if len(config.Npm.Args) > 0 {
+			args = append(args, "--", config.Npm.Args)
 		}
-	}()
+		return NewProcess("npm", args, context.Path(config.Npm.RelDir))
+	} else {
+		log.Fatalln("invalid service config?")
+		return nil
+	}
+}
+
+type ManagedService struct {
+	Context     *MaestroContext
+	Config      *ServiceConfig
+	Process     *Process
+	Healthcheck *Healthcheck
+	Status      ServiceStatus
+}
+
+func NewManagedService(serviceConfig *ServiceConfig, context *MaestroContext) *ManagedService {
+	return &ManagedService{
+		Context: context,
+		Config:  serviceConfig,
+		Process: NewServiceProcess(serviceConfig, context),
+		Status:  ServiceStopped,
+	}
+}
+
+func (ms *ManagedService) Launch() <-chan ServiceStatus {
+	status := make(chan ServiceStatus)
+	go ms.Process.Start()
+	if ms.Config.Healthcheck != nil {
+		ms.Healthcheck = NewHealthcheck(ms.Config.Healthcheck, ms.Context)
+		go ms.Healthcheck.Start()
+	}
+	go ms.waitForServiceReady(status)
 	return status
 }
 
-func (sp *ServiceProcess) runServiceProcess(status chan<- ServiceStatus) {
-	log.Println(sp.Config.Name + " starting")
-	err := sp.Command.Run()
-	log.Printf("%s has exited with status %d\n", sp.Config.Name, sp.Command.ProcessState.ExitCode())
-	if sp.HealthcheckTicker != nil {
-		sp.HealthcheckTicker.Stop()
-		sp.HealthcheckTicker = nil
-	}
-	if err != nil && sp.Command.ProcessState.ExitCode() == -1 {
-		log.Fatalf("%s's cmd is mis-configured: %s\n", sp.Config.Name, err.Error())
-	} else if sp.Command.ProcessState.ExitCode() > 0 {
-		log.Printf("%s exited with status %d", sp.Config.Name, sp.Command.ProcessState.ExitCode())
-		status <- Error
+func (ms *ManagedService) waitForServiceReady(status chan<- ServiceStatus) {
+	ms.updateStatus(status, ServiceStarting)
+	var hcStatus <-chan HealthcheckStatus
+	var pStatus <-chan ProcessStatus
+	if ms.Healthcheck != nil {
+		hcStatus = ms.Healthcheck.StatusUpdate
 	} else {
-		status <- Stopped
+		pStatus = ms.Process.StatusUpdate
+	}
+	for {
+		select {
+		case s := <-hcStatus:
+			if s == HealthcheckPassing {
+				ms.updateStatus(status, ServiceHealthy)
+				return
+			}
+			break
+		case s := <-pStatus:
+			if s == ProcessRunning {
+				ms.updateStatus(status, ServiceRunning)
+				return
+			}
+			break
+		}
 	}
 }
 
-func (sp *ServiceProcess) runServiceHealthcheck(status chan<- ServiceStatus) {
-	if sp.Config.Healthcheck.Delay > 0 {
-		<-time.NewTimer(time.Second * time.Duration(sp.Config.Healthcheck.Delay)).C
-	}
-	sp.HealthcheckTicker = time.NewTicker(time.Second * time.Duration(sp.Config.Healthcheck.Interval))
-	for {
-		if sp.HealthcheckTicker == nil {
-			return
-		}
-		healthcheckCommand := createExecCmd(sp.Config.Healthcheck.Cmd)
-		err := healthcheckCommand.Run()
-		if err != nil && healthcheckCommand.ProcessState.ExitCode() == -1 {
-			log.Fatalf("%s healthcheck cmd is mis-configured: %s\n", sp.Config.Name, err.Error())
-		} else if healthcheckCommand.ProcessState.ExitCode() > 0 {
-			status <- Failing
-		} else {
-			status <- Healthy
-		}
-		if sp.HealthcheckTicker != nil {
-			<-sp.HealthcheckTicker.C
-		}
+func (ms *ManagedService) updateStatus(c chan<- ServiceStatus, s ServiceStatus) {
+	ms.Status = s
+	select {
+	case c <- s:
+	default:
 	}
 }
+
+var services = make(map[string]*ManagedService)
 
 func InitServices(context *MaestroContext) {
 	pending := map[string][]string{}
+	var pendingNames []string
 	var ready []string
-	services := map[string]*ServiceProcess{}
 	for _, serviceConfig := range context.Services {
-		serviceProcess := NewServiceProcess(serviceConfig, context)
+		serviceProcess := NewManagedService(serviceConfig, context)
 		services[serviceConfig.Name] = serviceProcess
 		if len(serviceConfig.DependsOn) == 0 {
 			ready = append(ready, serviceConfig.Name)
 		} else {
 			pending[serviceConfig.Name] = append([]string(nil), serviceConfig.DependsOn...)
+			pendingNames = append(pendingNames, serviceConfig.Name)
 		}
 	}
+	log.Println("starting services without dependencies", ready)
+	log.Println("services pending dependencies", pendingNames)
 
 	var resolveDependency func(string) []string
 	var launchService func(serviceName string)
 	launchService = func(serviceName string) {
 		status := services[serviceName].Launch()
 		for {
-			cur := <-status
-			if cur == Running || cur == Healthy {
+			if next := <-status; next == ServiceRunning || next == ServiceHealthy {
 				resolvables := resolveDependency(serviceName)
 				if len(resolvables) > 0 {
 					for _, resolvable := range resolvables {
+						log.Println("starting service", resolvable)
 						go launchService(resolvable)
 					}
 				}
@@ -177,40 +171,4 @@ func InitServices(context *MaestroContext) {
 	for _, serviceName := range ready {
 		go launchService(serviceName)
 	}
-}
-
-func createServiceCommand(config *ServiceConfig, context *MaestroContext) *exec.Cmd {
-	var serviceCommand *exec.Cmd
-	if len(config.Exec) > 0 {
-		serviceCommand = createExecCmd(config.Exec)
-	} else if config.Gradle != nil {
-		task := fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)
-		serviceCommand = exec.Command("./gradlew", "-q", "--console=plain", task)
-	} else if config.Npm != nil {
-		npmRunCmdString := "npm run " + config.Npm.Script
-		if len(config.Npm.Args) > 0 {
-			npmRunCmdString += " -- " + config.Npm.Args
-		}
-		serviceCommand = createExecCmd(npmRunCmdString)
-		if len(config.Npm.RelDir) > 0 {
-			context.Path(config.Npm.RelDir)
-			serviceCommand.Dir = path.Join(context.WorkDir, config.Npm.RelDir)
-		}
-	} else {
-		log.Fatalln("invalid service config?")
-	}
-
-	serviceCommand.Stdout = os.Stdout
-	serviceCommand.Stderr = os.Stderr
-	return serviceCommand
-}
-
-func createExecCmd(execString string) *exec.Cmd {
-	binary, args := parseExecString(execString)
-	return exec.Command(binary, args...)
-}
-
-func parseExecString(execString string) (string, []string) {
-	execSplit := strings.Fields(execString)
-	return execSplit[0], execSplit[1:]
 }
