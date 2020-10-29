@@ -1,0 +1,37 @@
+const path = require('path')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+
+module.exports = {
+    devServer: {
+        port: 2999,
+    },
+    entry: './src/Maestro.jsx',
+    output: {
+        path: path.join(process.cwd(), 'dist'),
+        filename: 'maestro.js',
+    },
+    module: {
+        rules: [
+            {
+                test: /\.(js|jsx)$/,
+                exclude: /node_modules/,
+                loader: 'babel-loader',
+            },
+            {
+                test: /\.styl$/,
+                exclude: /node_modules/,
+                use: [
+                    'style-loader',
+                    'css-loader',
+                    'stylus-loader',
+                ],
+            }
+        ],
+    },
+    plugins: [
+        new HtmlWebpackPlugin({
+            title: 'Maestro',
+            template: 'src/index.html',
+        }),
+    ],
+}
