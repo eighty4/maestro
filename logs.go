@@ -10,7 +10,7 @@ type Logger struct {
 	lines  []int
 	buffer []byte
 	mutex  sync.Mutex
-	Logs   chan string
+	Logs   chan string `json:"-"`
 }
 
 func NewProcessLogger(command *exec.Cmd) *Logger {

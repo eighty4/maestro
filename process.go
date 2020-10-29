@@ -10,17 +10,17 @@ import (
 type ProcessStatus string
 
 const (
-	ProcessRunning  = "Running"  // running service
-	ProcessStopped  = "Stopped"  // stopped service with exit code 0
-	ProcessError    = "Error"    // stopped service with non-zero exit code
+	ProcessRunning = "Running" // running service
+	ProcessStopped = "Stopped" // stopped service with exit code 0
+	ProcessError   = "Error"   // stopped service with non-zero exit code
 )
 
 type Process struct {
 	Binary       string
 	Args         []string
 	Dir          string
-	Env          *map[string]string
-	Logging      *Logger `json:"-"`
+	Env          *map[string]string `json:",omitempty"`
+	Logging      *Logger            `json:"-"`
 	Status       ProcessStatus
 	StatusUpdate chan ProcessStatus `json:"-"`
 	Command      *exec.Cmd          `json:"-"`

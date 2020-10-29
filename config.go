@@ -27,10 +27,10 @@ type NpmScriptConfig struct {
 type ServiceConfig struct {
 	Name        string
 	Exec        string
-	Gradle      *GradleTaskConfig
-	Npm         *NpmScriptConfig
-	Healthcheck *HealthcheckConfig
-	DependsOn   []string `yaml:"depends_on"`
+	Gradle      *GradleTaskConfig  `json:",omitempty"`
+	Npm         *NpmScriptConfig   `json:",omitempty"`
+	Healthcheck *HealthcheckConfig `json:",omitempty"`
+	DependsOn   []string           `yaml:"depends_on"`
 }
 
 type ConfigFile struct {
