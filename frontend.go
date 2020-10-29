@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/eighty4/sse"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 )
 
 const frontendUrl = "http://localhost:2999"
@@ -133,5 +135,18 @@ func logs(w http.ResponseWriter, r *http.Request) {
 func state(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(405)
+	} else {
+		jsonData, err := json.Marshal(services)
+		if err != nil {
+			w.WriteHeader(500)
+			log.Println(err)
+		} else {
+			w.Header().Add("content-length", strconv.Itoa(len(jsonData)))
+			w.Header().Add("content-type", "application/json")
+			_, err := w.Write(jsonData)
+			if err != nil {
+				log.Println(err)
+			}
+		}
 	}
 }

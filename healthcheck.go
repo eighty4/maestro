@@ -15,16 +15,16 @@ const (
 type Healthcheck struct {
 	Config       *HealthcheckConfig
 	Process      *Process
-	Ticker       *time.Ticker
 	Status       HealthcheckStatus
-	StatusUpdate chan HealthcheckStatus
+	StatusUpdate chan HealthcheckStatus `json:"-"`
+	ticker       *time.Ticker
 }
 
 func NewHealthcheck(config *HealthcheckConfig, context *MaestroContext) *Healthcheck {
 	return &Healthcheck{
 		Config:       config,
 		Process:      NewProcessFromExecString(config.Cmd, context.WorkDir),
-		Ticker:       time.NewTicker(time.Second * time.Duration(config.Interval)),
+		ticker:       time.NewTicker(time.Second * time.Duration(config.Interval)),
 		Status:       HealthcheckPending,
 		StatusUpdate: make(chan HealthcheckStatus),
 	}
@@ -53,8 +53,8 @@ func (hc *Healthcheck) Start() {
 				break
 			}
 		}
-		if hc.Ticker != nil {
-			<-hc.Ticker.C
+		if hc.ticker != nil {
+			<-hc.ticker.C
 		}
 	}
 }

@@ -43,7 +43,7 @@ type ManagedService struct {
 	Context     *MaestroContext
 	Config      *ServiceConfig
 	Process     *Process
-	Healthcheck *Healthcheck
+	Healthcheck *Healthcheck `json:"omitempty"`
 	Status      ServiceStatus
 }
 
