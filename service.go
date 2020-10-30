@@ -17,26 +17,25 @@ const (
 	ServiceError    = "Error"    // stopped service with non-zero exit code
 )
 
-// todo buffer holding all log data from a service (GET /logs/${serviceName})
-// todo non-blocking channel for new logs used by browser sse and log udp connections
-// todo restart and stop process commands
-
 func NewServiceProcess(config *ServiceConfig, context *MaestroContext) *Process {
+	var process *Process
 	if len(config.Exec) > 0 {
-		return NewProcessFromExecString(config.Exec, context.WorkDir)
+		process = NewProcessFromExecString(config.Exec, context.WorkDir)
 	} else if config.Gradle != nil {
 		args := []string{"-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)}
-		return NewProcess("./gradlew", args, context.WorkDir)
+		process = NewProcess("./gradlew", args, context.WorkDir)
 	} else if config.Npm != nil {
 		args := []string{"run", config.Npm.Script}
 		if len(config.Npm.Args) > 0 {
 			args = append(args, "--", config.Npm.Args)
 		}
-		return NewProcess("npm", args, context.Path(config.Npm.RelDir))
+		process = NewProcess("npm", args, context.Path(config.Npm.RelDir))
 	} else {
 		log.Fatalln("invalid service config?")
-		return nil
 	}
+
+	process.Logging.print = true
+	return process
 }
 
 type ManagedService struct {
@@ -48,12 +47,14 @@ type ManagedService struct {
 }
 
 func NewManagedService(serviceConfig *ServiceConfig, context *MaestroContext) *ManagedService {
-	return &ManagedService{
+	service := &ManagedService{
 		Context: context,
 		Config:  serviceConfig,
 		Process: NewServiceProcess(serviceConfig, context),
 		Status:  ServiceStopped,
 	}
+	service.Process.Logging.Prefix = serviceConfig.Name
+	return service
 }
 
 func (ms *ManagedService) Launch() <-chan ServiceStatus {

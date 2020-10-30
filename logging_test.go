@@ -7,7 +7,9 @@ import (
 
 func TestLoggerWritesCommandOutputToChannel(t *testing.T) {
 	command := exec.Command("echo", "foobar")
-	logger := NewProcessLogger(command)
+	logger := NewProcessLogger(false)
+	command.Stdout = logger
+	command.Stderr = logger
 	result := make(chan string, 1)
 	go func() {
 		logStatement := <-logger.Logs
@@ -25,7 +27,9 @@ func TestLoggerWritesCommandOutputToChannel(t *testing.T) {
 
 func TestLoggerRetrieveLines_ReturnsEmptyWhenBeyondRange(t *testing.T) {
 	command := exec.Command("echo", "foo")
-	logger := NewProcessLogger(command)
+	logger := NewProcessLogger(false)
+	command.Stdout = logger
+	command.Stderr = logger
 	result := make(chan string)
 	go func() {
 		logStatement := <-logger.Logs
@@ -46,7 +50,9 @@ func TestLoggerRetrieveLines_ReturnsEmptyWhenBeyondRange(t *testing.T) {
 
 func TestLoggerRetrieveLines_RetrieveTilEnd(t *testing.T) {
 	command := exec.Command("echo", "foo\nbar")
-	logger := NewProcessLogger(command)
+	logger := NewProcessLogger(false)
+	command.Stdout = logger
+	command.Stderr = logger
 	result := make(chan string)
 	go func() {
 		logStatement := <-logger.Logs
@@ -73,7 +79,9 @@ func TestLoggerRetrieveLines_RetrieveTilEnd(t *testing.T) {
 
 func TestLoggerRetrieveLines_RetrieveSubSet(t *testing.T) {
 	command := exec.Command("echo", "foo\nbar\nwoo")
-	logger := NewProcessLogger(command)
+	logger := NewProcessLogger(false)
+	command.Stdout = logger
+	command.Stderr = logger
 	result := make(chan string)
 	go func() {
 		logStatement := <-logger.Logs
@@ -100,7 +108,9 @@ func TestLoggerRetrieveLines_RetrieveSubSet(t *testing.T) {
 
 func TestLoggerRetrieveLines_RetrieveBeyondLen(t *testing.T) {
 	command := exec.Command("echo", "foo\nbar\nwoo")
-	logger := NewProcessLogger(command)
+	logger := NewProcessLogger(false)
+	command.Stdout = logger
+	command.Stderr = logger
 	result := make(chan string)
 	go func() {
 		logStatement := <-logger.Logs

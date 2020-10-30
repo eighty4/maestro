@@ -2,7 +2,8 @@
 set -e
 
 rm -rf build
-go build -o build/maestro config.go context.go frontend.go healthcheck.go logs.go maestro.go process.go service.go
+mkdir build
+go build -o build/maestro config.go context.go frontend.go healthcheck.go logging.go maestro.go process.go service.go
 pushd frontend
 yarn build
 popd
