@@ -32,6 +32,7 @@ func NewProcess(binary string, args []string, dir string) *Process {
 		Binary:       binary,
 		Args:         args,
 		Dir:          dir,
+		Logging:      NewProcessLogger(false),
 		Status:       ProcessStopped,
 		StatusUpdate: make(chan ProcessStatus),
 	}
@@ -46,8 +47,9 @@ func (p *Process) Start() {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	p.termFunc = cancelFunc
 	p.Command = exec.CommandContext(ctx, p.Binary, p.Args...)
+	p.Command.Stdout = p.Logging
+	p.Command.Stderr = p.Logging
 	p.Command.Dir = p.Dir
-	p.Logging = NewProcessLogger(p.Command)
 	p.updateStatus(ProcessRunning)
 	err := p.Command.Run()
 	if err != nil {
