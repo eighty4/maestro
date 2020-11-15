@@ -17,6 +17,7 @@ func main() {
 	switch context.Command.Op {
 	case Main:
 		if context.ConfigFile == nil {
+			log.Println("no maestro config in this directory")
 			// todo read build.gradle, package.json, docker-compose.yml for services to create
 		} else {
 			StartFrontend()
