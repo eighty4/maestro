@@ -1,5 +1,6 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
     devServer: {
@@ -32,6 +33,11 @@ module.exports = {
         new HtmlWebpackPlugin({
             title: 'Maestro',
             template: 'src/index.html',
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                {from: 'static'},
+            ]
         }),
     ],
 }
