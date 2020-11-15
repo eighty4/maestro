@@ -1,7 +1,5 @@
 github.com/eighty4/sse v0.0.0-20201023181743-277424528b56 h1:5EqHRCJyp7iOpkCYrLuZK1JQc3pt7bvWnqMgPhg0D8w=
 github.com/eighty4/sse v0.0.0-20201023181743-277424528b56/go.mod h1:gxRvUti5AXVS2ZJ3TUwCo6rJCCzGJ9bRv4qE+PFXWGk=
-github.com/julienschmidt/httprouter v1.3.0 h1:U0609e9tgbseu3rBINet9P48AI/D3oJs4dN7jwJOQ1U=
-github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v2 v2.3.0 h1:clyUAQHOM3G0M3f5vQj7LuJrETvjVot3Z5el9nffUtU=

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"sync"
 )
 
@@ -23,7 +24,11 @@ func NewServiceProcess(config *ServiceConfig, context *MaestroContext) *Process 
 		process = NewProcessFromExecString(config.Exec, context.WorkDir)
 	} else if config.Gradle != nil {
 		args := []string{"-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)}
-		process = NewProcess("./gradlew", args, context.WorkDir)
+		if runtime.GOOS == "windows" {
+			process = NewProcess(".\\gradlew", args, context.WorkDir)
+		} else {
+			process = NewProcess("./gradlew", args, context.WorkDir)
+		}
 	} else if config.Npm != nil {
 		args := []string{"run", config.Npm.Script}
 		if len(config.Npm.Args) > 0 {
