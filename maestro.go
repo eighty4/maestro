@@ -27,6 +27,10 @@ func main() {
 		}
 		break
 	case Logs:
+		log.Println("log command is a noop")
+		break
+	case Git:
+		NewWorkspaceGitPull(context).pull()
 		break
 	}
 }

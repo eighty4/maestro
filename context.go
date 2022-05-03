@@ -11,6 +11,7 @@ type CliOp uint8
 const (
 	Main = iota
 	Logs
+	Git
 )
 
 func CliOpString(op CliOp) string {
@@ -19,14 +20,16 @@ func CliOpString(op CliOp) string {
 		return "main"
 	case Logs:
 		return "logs"
+	case Git:
+		return "git"
 	default:
 		return "unknown"
 	}
 }
 
 type CliCommand struct {
-	Op          CliOp
-	ServiceName string
+	Op   CliOp
+	Args interface{}
 }
 
 type MaestroContext struct {
@@ -56,7 +59,7 @@ func NewMaestroContext() (*MaestroContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse command: %s", err.Error())
 	}
-	if command.Op != Main && config == nil {
+	if command.Op == Logs && config == nil {
 		return nil, fmt.Errorf("could not find project config to run command %s. first use command 'maestro' from this directory to create a project configuration", CliOpString(command.Op))
 	}
 	context := &MaestroContext{
@@ -68,8 +71,11 @@ func NewMaestroContext() (*MaestroContext, error) {
 }
 
 func parseCommand() (*CliCommand, error) {
-	if len(os.Args) > 2 && os.Args[1] == "logs" {
-		return &CliCommand{Op: Logs, ServiceName: os.Args[2]}, nil
+	argsLen := len(os.Args)
+	if argsLen > 2 && os.Args[1] == "logs" {
+		return &CliCommand{Op: Logs, Args: os.Args[2]}, nil
+	} else if argsLen == 2 && os.Args[1] == "git" {
+		return &CliCommand{Op: Git}, nil
 	} else {
 		return &CliCommand{Op: Main}, nil
 	}

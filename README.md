@@ -1,16 +1,18 @@
-## Maestro
-this is a developer utility to configure and manage services and platform components for local development. built with Go.
+# Maestro
+a developer utility to configure and manage services and platform components for local development. built with Go.
 
-#### build
+## build
 ```
 git clone https://github.com/eighty4/maestro.git
 cd maestro
 ./install.sh
 ```
-add the location from `cd build && pwd` to your $PATH
+add the location from `cd dist && pwd` to your $PATH
 
-#### use
-to run any executable command, use the following `.maestro` file:
+## use `maestro`
+the primary `maestro` program will manage a set of processes defined in a `.maestro` file to simplify local dev env setup.
+
+to run any executable command:
 ```yaml
 ---
 services:
@@ -18,7 +20,7 @@ services:
     exec: sleep 9000
 ```
 
-if you're using gradle, in your gradle project dir, create a file `.maestro` with:
+if you're using gradle:
 ```yaml
 ---
 services:
@@ -27,6 +29,10 @@ services:
       module: my-service
       task: run
 ```
-replace `my-service` with a sub-module of your project and `run` with the task you wish to run.
+replace `my-service` with the sub-module of your project and `run` with the task you wish to run.
 
 then run `maestro` to start your local dev env.
+
+## use `maestro git`
+
+this command will do a `git pull` in each git repo subdirectory of your cwd.
