@@ -27,6 +27,7 @@ type WorkspaceDir struct {
 	Dir       string
 	Path      string
 	PullState GitPullState
+	PullCount int
 }
 
 func NewWorkspaceDir(ctx *MaestroContext, dirName string) WorkspaceDir {
@@ -74,9 +75,13 @@ func (wd *WorkspaceDir) GitPull() {
 	gitPullCmd.Stderr = nil
 	err := gitPullCmd.Run()
 	success := err == nil && gitPullCmd.ProcessState.ExitCode() == 0
+	outputStr := stdout.String()
 	if success {
 		wd.PullState = Pulled
-	} else if strings.Contains(stdout.String(), "CONFLICT") {
+		if strings.Index(outputStr, "Updating") == 0 {
+			wd.SetCommitCount(outputStr[9:16], outputStr[18:25])
+		}
+	} else if strings.Contains(outputStr, "CONFLICT") {
 		gitPullCmd := exec.Command("git", "rebase", "--abort")
 		gitPullCmd.Dir = wd.Dir
 		gitPullCmd.Stdout = nil
@@ -88,11 +93,27 @@ func (wd *WorkspaceDir) GitPull() {
 	}
 }
 
+func (wd *WorkspaceDir) SetCommitCount(from string, to string) {
+	cmtRange := fmt.Sprintf("%s..%s", from, to)
+	gitCmtCountCmd := exec.Command("git", "rev-list", cmtRange, "--count")
+	gitCmtCountCmd.Dir = wd.Dir
+	var stdout bytes.Buffer
+	gitCmtCountCmd.Stdout = &stdout
+	gitCmtCountCmd.Stderr = nil
+	_ = gitCmtCountCmd.Run()
+	cmtCount, err := strconv.Atoi(strings.TrimSpace(stdout.String()))
+	if err != nil {
+		log.Fatalln("commit count atoi err", err)
+	}
+	wd.PullCount = cmtCount
+}
+
 type WorkspaceGitPull struct {
 	ctx            *MaestroContext
 	repos          []*WorkspaceDir
 	reprint        bool
 	maxRepoNameLen int
+	mutex          sync.Mutex
 }
 
 func NewWorkspaceGitPull(ctx *MaestroContext) *WorkspaceGitPull {
@@ -111,20 +132,16 @@ func (gp *WorkspaceGitPull) pull() {
 	for _, repo := range gp.repos {
 		go func(repo *WorkspaceDir) {
 			repo.GitPull()
-			var mu sync.Mutex
-			mu.Lock()
 			gp.printPullState()
-			mu.Unlock()
 			wg.Done()
 		}(repo)
 	}
 
 	wg.Wait()
 
-	gp.printPullState()
 	for _, repo := range gp.repos {
 		if repo.PullState != Pulled {
-			color.HiRed("some repositories could not be pulled due to un-staged changes")
+			color.HiRed("some repositories could not be pulled")
 			os.Exit(1)
 		}
 	}
@@ -141,7 +158,6 @@ func unquoteCodePoint(s string) string {
 
 func (gp *WorkspaceGitPull) initRepositories() {
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 	var maxRepoNameLen = 0
 
 	for _, repo := range directories(gp.ctx) {
@@ -153,9 +169,9 @@ func (gp *WorkspaceGitPull) initRepositories() {
 					maxRepoNameLen = repoNameLen
 				}
 				repo.PullState = Pulling
-				mu.Lock()
+				gp.mutex.Lock()
 				gp.repos = append(gp.repos, repo)
-				mu.Unlock()
+				gp.mutex.Unlock()
 			}
 			wg.Done()
 		}(repo)
@@ -169,6 +185,8 @@ func (gp *WorkspaceGitPull) initRepositories() {
 }
 
 func (gp *WorkspaceGitPull) printPullState() {
+	gp.mutex.Lock()
+	defer gp.mutex.Unlock()
 	if gp.reprint {
 		repoLen := len(gp.repos)
 		upLine := "\033[A"
@@ -179,24 +197,34 @@ func (gp *WorkspaceGitPull) printPullState() {
 		}
 	} else {
 		gp.reprint = true
-		fmt.Printf("Updating %d repositories\n", len(gp.repos))
+		repoLen := len(gp.repos)
+		if repoLen == 1 {
+			fmt.Println("Updating 1 repository")
+		} else {
+			fmt.Printf("Updating %d repositories\n", len(gp.repos))
+		}
 	}
-	x := color.New(color.FgRed, color.Bold).SprintFunc()(unquoteCodePoint("\\U00002715"))
-	check := color.New(color.FgGreen, color.Bold).SprintFunc()(unquoteCodePoint("\\U00002714"))
+	x := color.New(color.FgRed, color.Bold).Sprint(unquoteCodePoint("\\U00002715"))
+	check := color.New(color.FgGreen, color.Bold).Sprint(unquoteCodePoint("\\U00002714"))
 	fmtStr := fmt.Sprintf("  %%%ds %%s %%s\n", gp.maxRepoNameLen)
 	for _, repo := range gp.repos {
 		checkOrX := ""
-		abortMsg := ""
+		textMsg := ""
 		if repo.PullState == Pulled {
 			checkOrX = check
+			if repo.PullCount == 1 {
+				textMsg = "pulled 1 commit"
+			} else if repo.PullCount > 1 {
+				textMsg = fmt.Sprintf("pulled %d commits", repo.PullCount)
+			}
 		} else if repo.PullState == MergeConflict {
 			checkOrX = x
-			abortMsg = "merge conflict"
+			textMsg = "merge conflict"
 		} else if repo.PullState == UnstagedChanges {
 			checkOrX = x
-			abortMsg = "unstaged changes"
+			textMsg = "unstaged changes"
 		}
-		fmt.Printf(fmtStr, repo.Dir, checkOrX, abortMsg)
+		fmt.Printf(fmtStr, repo.Dir, checkOrX, textMsg)
 	}
 }
 
