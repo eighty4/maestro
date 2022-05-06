@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/fatih/color"
 	"log"
 	"time"
 )
@@ -13,6 +14,9 @@ func main() {
 	context, err := NewMaestroContext()
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if context.Debug {
+		color.HiYellow("debug enabled")
 	}
 	switch context.Command.Op {
 	case Main:

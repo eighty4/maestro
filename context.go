@@ -36,6 +36,7 @@ type MaestroContext struct {
 	WorkDir string
 	Command *CliCommand
 	*ConfigFile
+	Debug bool
 }
 
 func (mc *MaestroContext) Path(relPath string) string {
@@ -66,6 +67,7 @@ func NewMaestroContext() (*MaestroContext, error) {
 		WorkDir:    workDir,
 		Command:    command,
 		ConfigFile: config,
+		Debug:      os.Getenv("MAESTRO_DEBUG") == "true",
 	}
 	return context, nil
 }
