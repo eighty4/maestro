@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,10 +25,11 @@ const (
 )
 
 type WorkspaceDir struct {
-	Dir       string
-	Path      string
-	PullState GitPullState
-	PullCount int
+	Dir        string
+	Path       string
+	PullState  GitPullState
+	PullCount  int
+	LocalCount int
 }
 
 func NewWorkspaceDir(ctx *MaestroContext, dirName string) WorkspaceDir {
@@ -79,8 +81,9 @@ func (wd *WorkspaceDir) GitPull() {
 	if success {
 		wd.PullState = Pulled
 		if strings.Index(outputStr, "Updating") == 0 {
-			wd.SetCommitCount(outputStr[9:16], outputStr[18:25])
+			wd.SetPulledCommitCount(outputStr[9:16], outputStr[18:25])
 		}
+		wd.SetLocalCommitCount()
 	} else if strings.Contains(outputStr, "CONFLICT") {
 		gitPullCmd := exec.Command("git", "rebase", "--abort")
 		gitPullCmd.Dir = wd.Dir
@@ -93,7 +96,7 @@ func (wd *WorkspaceDir) GitPull() {
 	}
 }
 
-func (wd *WorkspaceDir) SetCommitCount(from string, to string) {
+func (wd *WorkspaceDir) SetPulledCommitCount(from string, to string) {
 	cmtRange := fmt.Sprintf("%s..%s", from, to)
 	gitCmtCountCmd := exec.Command("git", "rev-list", cmtRange, "--count")
 	gitCmtCountCmd.Dir = wd.Dir
@@ -106,6 +109,28 @@ func (wd *WorkspaceDir) SetCommitCount(from string, to string) {
 		log.Fatalln("commit count atoi err", err)
 	}
 	wd.PullCount = cmtCount
+}
+
+func (wd *WorkspaceDir) SetLocalCommitCount() {
+	gitStatusCmd := exec.Command("git", "status")
+	gitStatusCmd.Dir = wd.Dir
+	var stdout bytes.Buffer
+	gitStatusCmd.Stdout = &stdout
+	gitStatusCmd.Stderr = nil
+	_ = gitStatusCmd.Run()
+	regex, err := regexp.Compile("Your branch is ahead of '.+/.+' by (\\d+) commits?\\.")
+	if err != nil {
+		log.Fatalln("err creating regex on git status stdout", err)
+	}
+	secondLine := strings.Split(stdout.String(), "\n")[1]
+	matches := regex.FindStringSubmatch(secondLine)
+	if len(matches) > 1 {
+		cmtCount, err := strconv.Atoi(matches[1])
+		if err != nil {
+			log.Fatalln("err creating regex on git status stdout", err)
+		}
+		wd.LocalCount = cmtCount
+	}
 }
 
 type WorkspaceGitPull struct {
@@ -204,24 +229,40 @@ func (gp *WorkspaceGitPull) printPullState() {
 			fmt.Printf("Updating %d repositories\n", len(gp.repos))
 		}
 	}
-	x := color.New(color.FgRed, color.Bold).Sprint(unquoteCodePoint("\\U00002715"))
-	check := color.New(color.FgGreen, color.Bold).Sprint(unquoteCodePoint("\\U00002714"))
+	redX := color.New(color.FgRed, color.Bold).Sprint(unquoteCodePoint("\\U00002715"))
+	check := unquoteCodePoint("\\U00002714")
+	greenCheck := color.New(color.FgGreen, color.Bold).Sprint(check)
+	yellowCheck := color.New(color.FgYellow, color.Bold).Sprint(unquoteCodePoint("\\U00002714"))
 	fmtStr := fmt.Sprintf("  %%%ds %%s %%s\n", gp.maxRepoNameLen)
 	for _, repo := range gp.repos {
 		checkOrX := ""
 		textMsg := ""
 		if repo.PullState == Pulled {
-			checkOrX = check
+			checkOrX = greenCheck
 			if repo.PullCount == 1 {
 				textMsg = "pulled 1 commit"
 			} else if repo.PullCount > 1 {
 				textMsg = fmt.Sprintf("pulled %d commits", repo.PullCount)
 			}
+			if repo.LocalCount > 0 {
+				checkOrX = yellowCheck
+				localCmtTextMsg := ""
+				if repo.LocalCount == 1 {
+					localCmtTextMsg = "1 local commit"
+				} else {
+					localCmtTextMsg = fmt.Sprintf("%d local commits", repo.LocalCount)
+				}
+				if len(textMsg) == 0 {
+					textMsg = localCmtTextMsg
+				} else {
+					textMsg = fmt.Sprintf("%s, %s", textMsg, localCmtTextMsg)
+				}
+			}
 		} else if repo.PullState == MergeConflict {
-			checkOrX = x
+			checkOrX = redX
 			textMsg = "merge conflict"
 		} else if repo.PullState == UnstagedChanges {
-			checkOrX = x
+			checkOrX = redX
 			textMsg = "unstaged changes"
 		}
 		fmt.Printf(fmtStr, repo.Dir, checkOrX, textMsg)
