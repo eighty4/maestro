@@ -80,10 +80,8 @@ func (wd *WorkspaceDir) GitPull() {
 	outputStr := stdout.String()
 	if success {
 		wd.PullState = Pulled
-		if strings.Index(outputStr, "Updating") == 0 {
-			wd.SetPulledCommitCount(outputStr[9:16], outputStr[18:25])
-		}
 		wd.SetLocalCommitCount()
+		wd.SetPulledCommitCount(outputStr)
 	} else if strings.Contains(outputStr, "CONFLICT") {
 		gitPullCmd := exec.Command("git", "rebase", "--abort")
 		gitPullCmd.Dir = wd.Dir
@@ -96,7 +94,21 @@ func (wd *WorkspaceDir) GitPull() {
 	}
 }
 
-func (wd *WorkspaceDir) SetPulledCommitCount(from string, to string) {
+func (wd *WorkspaceDir) SetPulledCommitCount(gitPullStdout string) {
+	if strings.Index(gitPullStdout, "Updating") != 0 {
+		return
+	}
+	regex, err := regexp.Compile("Updating ([a-z\\d]+)\\.\\.([a-z\\d]+)")
+	if err != nil {
+		log.Fatalln("err creating regex on git pull stdout", err)
+	}
+	firstLine := gitPullStdout[:strings.Index(gitPullStdout, "\n")]
+	matches := regex.FindStringSubmatch(firstLine)
+	if len(matches) != 3 {
+		return
+	}
+	from := matches[1]
+	to := matches[2]
 	cmtRange := fmt.Sprintf("%s..%s", from, to)
 	gitCmtCountCmd := exec.Command("git", "rev-list", cmtRange, "--count")
 	gitCmtCountCmd.Dir = wd.Dir
@@ -104,9 +116,10 @@ func (wd *WorkspaceDir) SetPulledCommitCount(from string, to string) {
 	gitCmtCountCmd.Stdout = &stdout
 	gitCmtCountCmd.Stderr = nil
 	_ = gitCmtCountCmd.Run()
-	cmtCount, err := strconv.Atoi(strings.TrimSpace(stdout.String()))
+	stdoutString := stdout.String()
+	cmtCount, err := strconv.Atoi(strings.TrimSpace(stdoutString))
 	if err != nil {
-		log.Fatalln("commit count atoi err", err)
+		log.Fatalln(wd.Dir, "atoi error", stdoutString, "\ngit rev-list", cmtRange, "--count\n", stdoutString)
 	}
 	wd.PullCount = cmtCount
 }
