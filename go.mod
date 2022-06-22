@@ -1,4 +1,4 @@
-module maestro
+module github.com/eighty4/maestro
 
 go 1.7
 
