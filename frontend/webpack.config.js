@@ -17,15 +17,6 @@ module.exports = {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
                 loader: 'babel-loader',
-            },
-            {
-                test: /\.styl$/,
-                exclude: /node_modules/,
-                use: [
-                    'style-loader',
-                    'css-loader',
-                    'stylus-loader',
-                ],
             }
         ],
     },
