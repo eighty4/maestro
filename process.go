@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"os/exec"
-	"strings"
 )
 
 type ProcessStatus string
@@ -87,9 +86,4 @@ func (p *Process) Stop() {
 	}
 	p.Command = nil
 	p.updateStatus(ProcessStopped)
-}
-
-func ParseExecString(execString string) (string, []string) {
-	execSplit := strings.Fields(execString)
-	return execSplit[0], execSplit[1:]
 }

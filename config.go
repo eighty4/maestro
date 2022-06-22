@@ -7,46 +7,39 @@ import (
 	"os"
 )
 
+type ConfigFile struct {
+	Services map[string]*ServiceConfig
+}
+
+type ServiceConfig struct {
+	Name          string
+	ProcessConfig ProcessConfig
+	Healthcheck   *HealthcheckConfig `json:",omitempty"`
+	DependsOn     []string           `yaml:"depends_on"`
+}
+
+type ProcessConfig interface {
+	CreateProcess(context *MaestroContext) *Process
+}
+
 type HealthcheckConfig struct {
 	Cmd      string
 	Interval int8
 	Delay    int8
 }
 
-type GradleTaskConfig struct {
-	Module string
-	Task   string
+type configFileRead struct {
+	Services map[string]*serviceConfigRead
 }
 
-type NpmScriptConfig struct {
-	Script string
-	Args   string
-	RelDir string `yaml:"rel_dir"`
-}
-
-type ServiceConfig struct {
-	Name        string
-	Exec        string
-	Gradle      *GradleTaskConfig  `json:",omitempty"`
-	Npm         *NpmScriptConfig   `json:",omitempty"`
-	Healthcheck *HealthcheckConfig `json:",omitempty"`
-	DependsOn   []string           `yaml:"depends_on"`
-}
-
-type ConfigFile struct {
-	Services       []*ServiceConfig          `yaml:"-"`
-	ServicesByName map[string]*ServiceConfig `yaml:"services"`
-}
-
-func NewConfig(services []*ServiceConfig) *ConfigFile {
-	servicesByName := make(map[string]*ServiceConfig)
-	for _, service := range services {
-		servicesByName[service.Name] = service
-	}
-	return &ConfigFile{
-		Services:       services,
-		ServicesByName: servicesByName,
-	}
+type serviceConfigRead struct {
+	Name          string
+	Exec          *ExecConfig
+	Npm           *NpmScriptConfig
+	Gradle        *GradleTaskConfig
+	ProcessConfig ProcessConfig      `yaml:"-"`
+	Healthcheck   *HealthcheckConfig `json:",omitempty"`
+	DependsOn     []string           `yaml:"depends_on"`
 }
 
 func ReadConfig(dir string) (*ConfigFile, error) {
@@ -60,14 +53,13 @@ func ReadConfig(dir string) (*ConfigFile, error) {
 		}
 	}
 
-	var config ConfigFile
+	var config configFileRead
 	err = yaml.Unmarshal(content, &config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse yaml from %s: %s", file, err.Error())
 	}
 
-	for name, service := range config.ServicesByName {
-		config.Services = append(config.Services, service)
+	for name, service := range config.Services {
 		service.Name = name
 		err = validateServiceConfig(service, &config)
 		if err != nil {
@@ -80,11 +72,36 @@ func ReadConfig(dir string) (*ConfigFile, error) {
 		return nil, err
 	}
 
-	return &config, nil
+	return exportServiceConfigRead(&config), nil
 }
 
-func validateServiceConfig(service *ServiceConfig, config *ConfigFile) error {
-	execSpecified := len(service.Exec) != 0
+func exportServiceConfigRead(cfRead *configFileRead) *ConfigFile {
+	services := make(map[string]*ServiceConfig)
+	for name, scRead := range cfRead.Services {
+		var pc ProcessConfig
+		if scRead.Gradle != nil {
+			pc = scRead.Gradle
+		} else if scRead.Npm != nil {
+			pc = scRead.Npm
+		} else if scRead.Exec != nil {
+			pc = scRead.Exec
+		}
+		scRead.ProcessConfig = pc
+		s := &ServiceConfig{
+			Name:          scRead.Name,
+			ProcessConfig: scRead.ProcessConfig,
+			Healthcheck:   scRead.Healthcheck,
+			DependsOn:     scRead.DependsOn,
+		}
+		services[name] = s
+	}
+	return &ConfigFile{
+		Services: services,
+	}
+}
+
+func validateServiceConfig(service *serviceConfigRead, config *configFileRead) error {
+	execSpecified := service.Exec != nil
 	gradleSpecified := service.Gradle != nil
 	npmSpecified := service.Npm != nil
 	countSpecified := 0
@@ -100,7 +117,7 @@ func validateServiceConfig(service *ServiceConfig, config *ConfigFile) error {
 		return fmt.Errorf("service %s cannot specify multiple executable configs", service.Name)
 	}
 	for _, dep := range service.DependsOn {
-		if _, ok := config.ServicesByName[dep]; !ok {
+		if _, ok := config.Services[dep]; !ok {
 			return fmt.Errorf("%s has declared a dep on %s that does not exist", service.Name, dep)
 		}
 	}
@@ -124,12 +141,12 @@ func validateServiceConfig(service *ServiceConfig, config *ConfigFile) error {
 	return nil
 }
 
-func validateResolvableServiceDependencies(config *ConfigFile) error {
+func validateResolvableServiceDependencies(config *configFileRead) error {
 	resolvable := false
 	for _, service := range config.Services {
 		resolvable = resolvable || len(service.DependsOn) == 0
 		for _, thisServiceDep := range service.DependsOn {
-			for _, thatServiceDep := range config.ServicesByName[thisServiceDep].DependsOn {
+			for _, thatServiceDep := range config.Services[thisServiceDep].DependsOn {
 				if service.Name == thatServiceDep {
 					return fmt.Errorf(thatServiceDep + " has a circular dependency with " + thisServiceDep)
 				}

@@ -5,14 +5,26 @@ import (
 	"time"
 )
 
+func newTestConfig(services []*ServiceConfig) *ConfigFile {
+	servicesByName := make(map[string]*ServiceConfig)
+	for _, service := range services {
+		servicesByName[service.Name] = service
+	}
+	return &ConfigFile{
+		Services: servicesByName,
+	}
+}
+
 func TestCreateServiceCommand_ForExecutableCommand(t *testing.T) {
 	config := &ServiceConfig{
-		Exec: "ls /",
+		ProcessConfig: &ExecConfig{
+			Cmd: "ls /",
+		},
 	}
 	context := &MaestroContext{WorkDir: tempDir()}
 	defer cleanup(context.WorkDir)
 
-	command := NewServiceProcess(config, context)
+	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "ls" {
 		t.Error(command.Binary)
 	}
@@ -23,12 +35,12 @@ func TestCreateServiceCommand_ForExecutableCommand(t *testing.T) {
 
 func TestCreateServiceCommand_ForGradleTask(t *testing.T) {
 	config := &ServiceConfig{
-		Gradle: &GradleTaskConfig{"my-module", "my-task"},
+		ProcessConfig: &GradleTaskConfig{"my-module", "my-task"},
 	}
 	context := &MaestroContext{WorkDir: tempDir()}
 	defer cleanup(context.WorkDir)
 
-	command := NewServiceProcess(config, context)
+	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "./gradlew" {
 		t.Error(command.Binary)
 	}
@@ -39,12 +51,12 @@ func TestCreateServiceCommand_ForGradleTask(t *testing.T) {
 
 func TestCreateServiceCommand_ForNpmScript(t *testing.T) {
 	config := &ServiceConfig{
-		Npm: &NpmScriptConfig{"start", "--foo=bar", "my-yarn-workspace"},
+		ProcessConfig: &NpmScriptConfig{"start", "--foo=bar", "my-yarn-workspace"},
 	}
 	context := &MaestroContext{WorkDir: tempDir()}
 	defer cleanup(context.WorkDir)
 
-	command := NewServiceProcess(config, context)
+	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "npm" {
 		t.Error(command.Binary)
 	}
@@ -58,7 +70,9 @@ func TestCreateServiceCommand_ForNpmScript(t *testing.T) {
 
 func TestManagedService_WithoutHealthcheck_EmitsRunning(t *testing.T) {
 	config := &ServiceConfig{
-		Exec: "sleep 2",
+		ProcessConfig: &ExecConfig{
+			Cmd: "sleep 2",
+		},
 	}
 	context := &MaestroContext{WorkDir: tempDir()}
 	defer cleanup(context.WorkDir)
@@ -76,7 +90,9 @@ func TestManagedService_WithoutHealthcheck_EmitsRunning(t *testing.T) {
 
 func TestManagedService_WithHealthcheck_EmitsHealthy(t *testing.T) {
 	config := &ServiceConfig{
-		Exec: "sleep 2",
+		ProcessConfig: &ExecConfig{
+			Cmd: "sleep 2",
+		},
 		Healthcheck: &HealthcheckConfig{
 			Cmd:      "ls /",
 			Interval: 1,
@@ -98,12 +114,16 @@ func TestManagedService_WithHealthcheck_EmitsHealthy(t *testing.T) {
 
 func TestInitServices_HandlesDependsOn(t *testing.T) {
 	context := &MaestroContext{
-		ConfigFile: NewConfig([]*ServiceConfig{{
+		ConfigFile: newTestConfig([]*ServiceConfig{{
 			Name: "one",
-			Exec: "sleep 9000",
+			ProcessConfig: &ExecConfig{
+				Cmd: "sleep 9000",
+			},
 		}, {
 			Name: "two",
-			Exec: "sleep 9000",
+			ProcessConfig: &ExecConfig{
+				Cmd: "sleep 9000",
+			},
 			DependsOn: []string{"one"},
 		}}),
 	}
@@ -119,9 +139,11 @@ func TestInitServices_HandlesDependsOn(t *testing.T) {
 
 func TestInitServices_HandlesDependsOn_WithHealthcheck(t *testing.T) {
 	context := &MaestroContext{
-		ConfigFile: NewConfig([]*ServiceConfig{{
+		ConfigFile: newTestConfig([]*ServiceConfig{{
 			Name: "one",
-			Exec: "sleep 9000",
+			ProcessConfig: &ExecConfig{
+				Cmd: "sleep 9000",
+			},
 			Healthcheck: &HealthcheckConfig{
 				Cmd:      "ls /",
 				Interval: 1,
@@ -129,7 +151,9 @@ func TestInitServices_HandlesDependsOn_WithHealthcheck(t *testing.T) {
 			},
 		}, {
 			Name: "two",
-			Exec: "sleep 9000",
+			ProcessConfig: &ExecConfig{
+				Cmd: "sleep 9000",
+			},
 			DependsOn: []string{"one"},
 		}}),
 	}

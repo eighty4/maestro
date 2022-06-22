@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -54,7 +55,8 @@ func TestReadConfig_ReturnsConfig_WithExecCommand(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
 `)
 	defer cleanup(dir)
 
@@ -63,11 +65,14 @@ services:
 	if err != nil {
 		t.Error(err)
 	} else {
-		serviceConfig, ok := config.ServicesByName["my-api"]
+		serviceConfig, ok := config.Services["my-api"]
 		if !ok {
 			t.Error("service is not present")
-		} else if serviceConfig.Exec != "ls /" {
-			t.Error("exec value was " + serviceConfig.Exec)
+		} else {
+			exec := serviceConfig.ProcessConfig.(*ExecConfig)
+			if exec.Cmd != "ls /" {
+				t.Error("exec value was " + exec.Cmd)
+			}
 		}
 	}
 }
@@ -87,17 +92,20 @@ services:
 	if err != nil {
 		t.Error(err)
 	} else {
-		serviceConfig, ok := config.ServicesByName["my-api"]
+		serviceConfig, ok := config.Services["my-api"]
 		if !ok {
 			t.Error("service is not present")
 		} else if serviceConfig.Name != "my-api" {
 			t.Errorf("expected name my-api, actual value was %s", serviceConfig.Name)
-		} else if serviceConfig.Gradle == nil {
-			t.Error("gradle config not present")
-		} else if serviceConfig.Gradle.Module != "my-api-module" {
-			t.Error("expected module my-api-module, actual value was " + serviceConfig.Gradle.Module)
-		} else if serviceConfig.Gradle.Task != "run" {
-			t.Error("expected task run, actual value was " + serviceConfig.Gradle.Task)
+		} else {
+			gradle := serviceConfig.ProcessConfig.(*GradleTaskConfig)
+			if gradle == nil {
+				t.Error("gradle config not present")
+			} else if gradle.Module != "my-api-module" {
+				t.Error("expected module my-api-module, actual value was " + gradle.Module)
+			} else if gradle.Task != "run" {
+				t.Error("expected task run, actual value was " + gradle.Task)
+			}
 		}
 	}
 }
@@ -118,19 +126,22 @@ services:
 	if err != nil {
 		t.Error(err)
 	} else {
-		serviceConfig, ok := config.ServicesByName["my-ui"]
+		serviceConfig, ok := config.Services["my-ui"]
 		if !ok {
 			t.Error("service is not present")
 		} else if serviceConfig.Name != "my-ui" {
 			t.Errorf("expected name my-ui, actual value was %s", serviceConfig.Name)
-		} else if serviceConfig.Npm == nil {
-			t.Error("npm config not present")
-		} else if serviceConfig.Npm.Script != "start" {
-			t.Error("expected script start, actual value was " + serviceConfig.Npm.Script)
-		} else if serviceConfig.Npm.Args != "foo bar" {
-			t.Error("expected args 'foo bar', actual value was " + serviceConfig.Npm.Args)
-		} else if serviceConfig.Npm.RelDir != "my/package" {
-			t.Error("expected rel dir my/package, actual value was " + serviceConfig.Npm.RelDir)
+		} else {
+			npm := serviceConfig.ProcessConfig.(*NpmScriptConfig)
+			if npm == nil {
+				t.Error("npm config not present")
+			} else if npm.Script != "start" {
+				t.Error("expected script start, actual value was " + npm.Script)
+			} else if npm.Args != "foo bar" {
+				t.Error("expected args 'foo bar', actual value was " + npm.Args)
+			} else if npm.RelDir != "my/package" {
+				t.Error("expected rel dir my/package, actual value was " + npm.RelDir)
+			}
 		}
 	}
 }
@@ -139,7 +150,8 @@ func TestReadConfig_ReturnsConfig_WithHealthcheck(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     healthcheck:
       cmd: ls /
       interval: 3
@@ -152,7 +164,7 @@ services:
 	if err != nil {
 		t.Error(err)
 	} else {
-		serviceConfig, ok := config.ServicesByName["my-api"]
+		serviceConfig, ok := config.Services["my-api"]
 		if !ok {
 			t.Error("service is not present")
 		} else if serviceConfig.Healthcheck == nil {
@@ -171,11 +183,13 @@ func TestReadConfig_ReturnsConfig_WithDependsOnConfig(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - postgres
   postgres:
-    exec: ls /
+    exec:
+      cmd: ls /
 `)
 	defer cleanup(dir)
 
@@ -187,11 +201,11 @@ services:
 		t.Error("config is nil")
 	} else if len(config.Services) != 2 {
 		t.Errorf("expected services count 2, actual value was %d", len(config.Services))
-	} else if len(config.ServicesByName) != 2 {
-		t.Errorf("expected services by name count 2, actual value was %d", len(config.ServicesByName))
+	} else if len(config.Services) != 2 {
+		t.Errorf("expected services by name count 2, actual value was %d", len(config.Services))
 	}
 
-	serviceConfig, ok := config.ServicesByName["my-api"]
+	serviceConfig, ok := config.Services["my-api"]
 	if !ok {
 		t.Error("service is not present")
 	} else if serviceConfig.DependsOn[0] != "postgres" {
@@ -206,7 +220,8 @@ services:
     gradle:
       module: my-api-module
       task: run
-    exec: ls /
+    exec:
+      cmd: ls /
 `)
 	defer cleanup(dir)
 
@@ -245,7 +260,8 @@ func TestReadConfig_ReturnsError_WithHealthcheckCmdMissing(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     healthcheck:
       interval: 1
 `)
@@ -264,7 +280,8 @@ func TestReadConfig_ReturnsError_WithHealthcheckIntervalTooLow(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     healthcheck:
       cmd: ls /
       interval: 0
@@ -284,7 +301,8 @@ func TestReadConfig_ReturnsError_WithHealthcheckDelayTooLow(t *testing.T) {
 	dir := writeConfig(`
 services:
   my-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     healthcheck:
       cmd: ls /
       interval: 1
@@ -328,11 +346,13 @@ func TestReadConfig_ReturnsError_WhenCircularDependencyPresent(t *testing.T) {
 	dir := writeConfig(`
 services:
   this-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - that-api
   that-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - this-api
 `)
@@ -354,15 +374,18 @@ func TestReadConfig_ReturnsError_WhenUnresolvableWithoutDependencyFreeService(t 
 	dir := writeConfig(`
 services:
   this-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - that-api
   that-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - another-api
   another-api:
-    exec: ls /
+    exec:
+      cmd: ls /
     depends_on:
      - this-api
 `)
@@ -418,5 +441,69 @@ services:
 		t.Error("error is nil")
 	} else if err.Error() != "service my-service is missing task to run" {
 		t.Error("err was: " + err.Error())
+	}
+}
+
+func TestYamlUnmarshall(t *testing.T) {
+	configBytes := []byte(`
+services:
+  gradle-app:
+    gradle:
+      module: foobar
+      task: run
+  npm-app:
+    npm:
+      script: start
+  exec-app:
+    exec:
+      cmd: ls /
+`)
+
+	var config configFileRead
+	err := yaml.Unmarshal(configBytes, &config)
+	if err != nil {
+		t.Error(err)
+	} else if config.Services == nil {
+		t.Error("services should not be nil")
+	} else {
+		if config.Services["gradle-app"] == nil {
+			t.Error("gradle-app should not be nil")
+		} else {
+			gradleConfig := config.Services["gradle-app"].Gradle
+			if gradleConfig == nil {
+				t.Error("gradle-app:gradle should not be nil")
+			} else {
+				if gradleConfig.Task != "run" {
+					t.Error("gradle-app/gradle/task should is " + gradleConfig.Task)
+				}
+				if gradleConfig.Module != "foobar" {
+					t.Error("gradle-app/gradle/module should is " + gradleConfig.Module)
+				}
+			}
+		}
+		if config.Services["npm-app"] == nil {
+			t.Error("npm-app should not be nil")
+		} else {
+			npmConfig := config.Services["npm-app"].Npm
+			if npmConfig == nil {
+				t.Error("npm-app:npm should not be nil")
+			} else {
+				if npmConfig.Script != "start" {
+					t.Error("gradle-app/gradle/task should is " + npmConfig.Script)
+				}
+			}
+		}
+		if config.Services["exec-app"] == nil {
+			t.Error("exec-app should not be nil")
+		} else {
+			execConfig := config.Services["exec-app"].Exec
+			if execConfig == nil {
+				t.Error("npm-app:npm should not be nil")
+			} else {
+				if execConfig.Cmd != "ls /" {
+					t.Error("gradle-app/gradle/task should is " + execConfig.Cmd)
+				}
+			}
+		}
 	}
 }

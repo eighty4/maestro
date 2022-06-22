@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"runtime"
 	"sync"
 )
 
@@ -18,31 +16,6 @@ const (
 	ServiceError    = "Error"    // stopped service with non-zero exit code
 )
 
-func NewServiceProcess(config *ServiceConfig, context *MaestroContext) *Process {
-	var process *Process
-	if len(config.Exec) > 0 {
-		process = NewProcessFromExecString(config.Exec, context.WorkDir)
-	} else if config.Gradle != nil {
-		args := []string{"-q", "--console=plain", fmt.Sprintf("%s:%s", config.Gradle.Module, config.Gradle.Task)}
-		if runtime.GOOS == "windows" {
-			process = NewProcess(".\\gradlew", args, context.WorkDir)
-		} else {
-			process = NewProcess("./gradlew", args, context.WorkDir)
-		}
-	} else if config.Npm != nil {
-		args := []string{"run", config.Npm.Script}
-		if len(config.Npm.Args) > 0 {
-			args = append(args, "--", config.Npm.Args)
-		}
-		process = NewProcess("npm", args, context.Path(config.Npm.RelDir))
-	} else {
-		log.Fatalln("invalid service config?")
-	}
-
-	process.Logging.print = true
-	return process
-}
-
 type ManagedService struct {
 	Context     *MaestroContext
 	Config      *ServiceConfig
@@ -55,7 +28,7 @@ func NewManagedService(serviceConfig *ServiceConfig, context *MaestroContext) *M
 	service := &ManagedService{
 		Context: context,
 		Config:  serviceConfig,
-		Process: NewServiceProcess(serviceConfig, context),
+		Process: serviceConfig.ProcessConfig.CreateProcess(context),
 		Status:  ServiceStopped,
 	}
 	service.Process.Logging.Prefix = serviceConfig.Name

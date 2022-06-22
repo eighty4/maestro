@@ -17,7 +17,8 @@ to run any executable command:
 ---
 services:
   my-service-name:
-    exec: sleep 9000
+    exec:
+      cmd: sleep 9000
 ```
 
 if you're using gradle:
@@ -29,7 +30,16 @@ services:
       module: my-service
       task: run
 ```
-replace `my-service` with the sub-module of your project and `run` with the task you wish to run.
+replace `my-service` with the submodule of your project and `run` with the task you wish to run.
+
+if you're using npm scripts:
+```yaml
+---
+services:
+  my-service-name:
+    npm:
+      script: start
+```
 
 then run `maestro` to start your local dev env.
 
