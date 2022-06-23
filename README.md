@@ -5,7 +5,7 @@ a developer utility to configure and manage services and platform components for
 ```
 git clone https://github.com/eighty4/maestro.git
 cd maestro
-./install.sh
+./build.py
 ```
 add the location from `cd dist && pwd` to your $PATH
 
