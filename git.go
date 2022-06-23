@@ -187,11 +187,11 @@ func (gp *WorkspaceGitPull) pull() {
 }
 
 func unquoteCodePoint(s string) string {
-	r, err := strconv.ParseInt(strings.TrimPrefix(s, "\\U"), 16, 32)
+	result, err := strconv.Unquote(fmt.Sprintf("'%s'", s))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return string(r)
+	return result
 }
 
 func (gp *WorkspaceGitPull) initRepositories() {
