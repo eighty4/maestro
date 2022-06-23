@@ -10,6 +10,8 @@ import (
 // todo non-blocking channel for new logs used by browser sse and log udp connections
 // todo restart and stop process commands
 
+var orchestration *ServiceOrchestration
+
 func main() {
 	context, err := NewMaestroContext()
 	if err != nil {
@@ -26,7 +28,8 @@ func main() {
 		} else {
 			StartFrontend()
 			<-time.NewTimer(100 * time.Millisecond).C
-			InitServices(context)
+			orchestration = NewServiceOrchestration(context)
+			orchestration.Initialize()
 			select {}
 		}
 		break

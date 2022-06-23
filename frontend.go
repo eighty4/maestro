@@ -136,7 +136,7 @@ func state(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		w.WriteHeader(405)
 	} else {
-		jsonData, err := json.Marshal(services)
+		jsonData, err := json.Marshal(orchestration.Services)
 		if err != nil {
 			w.WriteHeader(500)
 			log.Println(err)

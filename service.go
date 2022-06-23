@@ -81,15 +81,31 @@ func (ms *ManagedService) updateStatus(c chan<- ServiceStatus, s ServiceStatus) 
 	}
 }
 
-var services = make(map[string]*ManagedService)
+type ServiceOrchestration struct {
+	context  *MaestroContext
+	mutex    sync.Mutex
+	pending  map[string][]string
+	Services map[string]*ManagedService
+}
 
-func InitServices(context *MaestroContext) {
+func NewServiceOrchestration(context *MaestroContext) *ServiceOrchestration {
+	return &ServiceOrchestration{
+		context:  context,
+		mutex:    sync.Mutex{},
+		pending:  make(map[string][]string),
+		Services: make(map[string]*ManagedService),
+	}
+}
+
+func (o *ServiceOrchestration) Initialize() {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
 	pending := map[string][]string{}
 	var pendingNames []string
 	var ready []string
-	for _, serviceConfig := range context.Services {
-		serviceProcess := NewManagedService(serviceConfig, context)
-		services[serviceConfig.Name] = serviceProcess
+	for _, serviceConfig := range o.context.Services {
+		serviceProcess := NewManagedService(serviceConfig, o.context)
+		o.Services[serviceConfig.Name] = serviceProcess
 		if len(serviceConfig.DependsOn) == 0 {
 			ready = append(ready, serviceConfig.Name)
 		} else {
@@ -100,54 +116,47 @@ func InitServices(context *MaestroContext) {
 	log.Println("starting services without dependencies", ready)
 	log.Println("services pending dependencies", pendingNames)
 
-	var resolveDependency func(string) []string
-	var launchService func(serviceName string)
-	launchService = func(serviceName string) {
-		status := services[serviceName].Launch()
-		for {
-			if next := <-status; next == ServiceRunning || next == ServiceHealthy {
-				resolvables := resolveDependency(serviceName)
-				if len(resolvables) > 0 {
-					for _, resolvable := range resolvables {
-						log.Println("starting service", resolvable)
-						go launchService(resolvable)
-					}
-				}
-			}
-		}
-	}
-
-	if len(pending) == 0 {
-		resolveDependency = func(ignore string) []string { return nil }
-	} else {
-		mutex := sync.Mutex{}
-		resolveDependency = func(resolved string) []string {
-			mutex.Lock()
-			updates := map[string][]string{}
-			for serviceName, deps := range pending {
-				for i, dep := range deps {
-					if dep == resolved {
-						s := append([]string(nil), deps...)
-						s[len(s)-1], s[i] = s[i], s[len(s)-1]
-						updates[serviceName] = s[:len(s)-1]
-					}
-				}
-			}
-			var resolvable []string
-			for serviceName, deps := range updates {
-				if len(deps) == 0 {
-					resolvable = append(resolvable, serviceName)
-					delete(pending, serviceName)
-				} else {
-					pending[serviceName] = deps
-				}
-			}
-			mutex.Unlock()
-			return resolvable
-		}
-	}
-
 	for _, serviceName := range ready {
-		go launchService(serviceName)
+		go o.LaunchService(serviceName)
 	}
+}
+
+func (o *ServiceOrchestration) LaunchService(serviceName string) {
+	status := o.Services[serviceName].Launch()
+	for {
+		if next := <-status; next == ServiceRunning || next == ServiceHealthy {
+			resolvables := o.ResolveDependency(serviceName)
+			if len(resolvables) > 0 {
+				for _, resolvable := range resolvables {
+					log.Println("starting service", resolvable)
+					go o.LaunchService(resolvable)
+				}
+			}
+		}
+	}
+}
+
+func (o *ServiceOrchestration) ResolveDependency(resServiceName string) []string {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+	updates := map[string][]string{}
+	for serviceName, deps := range o.pending {
+		for i, depServiceName := range deps {
+			if depServiceName == resServiceName {
+				s := append([]string(nil), deps...)
+				s[len(s)-1], s[i] = s[i], s[len(s)-1]
+				updates[serviceName] = s[:len(s)-1]
+			}
+		}
+	}
+	var resolvable []string
+	for serviceName, deps := range updates {
+		if len(deps) == 0 {
+			resolvable = append(resolvable, serviceName)
+			delete(o.pending, serviceName)
+		} else {
+			o.pending[serviceName] = deps
+		}
+	}
+	return resolvable
 }
