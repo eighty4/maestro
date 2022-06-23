@@ -5,7 +5,10 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 )
+
+const ConfigFilename = ".maestro"
 
 type ConfigFile struct {
 	Services map[string]*ServiceConfig
@@ -43,7 +46,7 @@ type serviceConfigRead struct {
 }
 
 func ReadConfig(dir string) (*ConfigFile, error) {
-	file := configFile(dir)
+	file := filepath.Join(dir, ConfigFilename)
 	content, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -157,12 +160,4 @@ func validateResolvableServiceDependencies(config *configFileRead) error {
 		return fmt.Errorf("at least one service needs to be launchable without a dependency")
 	}
 	return nil
-}
-
-func configFile(dir string) string {
-	if dir[len(dir)-1:] == "/" {
-		return dir + ".maestro"
-	} else {
-		return dir + "/.maestro"
-	}
 }
