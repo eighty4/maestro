@@ -2,7 +2,6 @@ package main
 
 import (
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,14 +9,14 @@ import (
 )
 
 func tempDir() string {
-	dir, _ := ioutil.TempDir(os.TempDir(), "maestro-test")
+	dir, _ := os.MkdirTemp(os.TempDir(), "maestro-test")
 	return dir
 }
 
 func writeConfig(config string) string {
 	dir := tempDir()
 	file := filepath.Join(dir, ConfigFilename)
-	_ = ioutil.WriteFile(file, []byte(config), 0644)
+	_ = os.WriteFile(file, []byte(config), 0644)
 	return dir
 }
 

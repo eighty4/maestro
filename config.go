@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -47,7 +46,7 @@ type serviceConfigRead struct {
 
 func ReadConfig(dir string) (*ConfigFile, error) {
 	file := filepath.Join(dir, ConfigFilename)
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

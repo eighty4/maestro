@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/fatih/color"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -284,7 +283,7 @@ func (gp *WorkspaceGitPull) printPullState() {
 
 func directories(ctx *MaestroContext) []*WorkspaceDir {
 	var dirs []*WorkspaceDir
-	files, err := ioutil.ReadDir(ctx.WorkDir)
+	files, err := os.ReadDir(ctx.WorkDir)
 	if err != nil {
 		log.Fatalln("err workspace dir walk", err)
 	} else {

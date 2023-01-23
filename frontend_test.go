@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http/httptest"
 	"testing"
 )
@@ -14,7 +14,7 @@ func TestGetState(t *testing.T) {
 	state(w, req)
 
 	res := w.Result()
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode != 200 {
 		t.Error(res.StatusCode)
