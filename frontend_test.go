@@ -7,6 +7,8 @@ import (
 )
 
 func TestGetState(t *testing.T) {
+	context, _ := NewMaestroContext()
+	orchestration = NewServiceOrchestration(context)
 	req := httptest.NewRequest("GET", "http://foo/state", nil)
 	w := httptest.NewRecorder()
 	state(w, req)
@@ -23,6 +25,8 @@ func TestGetState(t *testing.T) {
 }
 
 func TestGetState_MethodNotAllowed(t *testing.T) {
+	context, _ := NewMaestroContext()
+	orchestration = NewServiceOrchestration(context)
 	req := httptest.NewRequest("POST", "http://foo/state", nil)
 	w := httptest.NewRecorder()
 	state(w, req)
