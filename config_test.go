@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/eighty4/maestro/util"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -8,25 +9,16 @@ import (
 	"testing"
 )
 
-func tempDir() string {
-	dir, _ := os.MkdirTemp(os.TempDir(), "maestro-test")
-	return dir
-}
-
 func writeConfig(config string) string {
-	dir := tempDir()
+	dir := util.MkTmpDir()
 	file := filepath.Join(dir, ConfigFilename)
 	_ = os.WriteFile(file, []byte(config), 0644)
 	return dir
 }
 
-func cleanup(dir string) {
-	_ = os.RemoveAll(dir)
-}
-
 func TestReadConfig_ReturnsWithoutConfigOrError_WhenNoConfigFileMissing(t *testing.T) {
-	dir := tempDir()
-	defer cleanup(dir)
+	dir := util.MkTmpDir()
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 	if config != nil {
@@ -38,7 +30,7 @@ func TestReadConfig_ReturnsWithoutConfigOrError_WhenNoConfigFileMissing(t *testi
 
 func TestReadConfig_ReturnsError_WhenConfigIsMalformedYaml(t *testing.T) {
 	dir := writeConfig("	invalid	")
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -58,7 +50,7 @@ services:
     exec:
       cmd: ls /
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -85,7 +77,7 @@ services:
       module: my-api-module
       task: run
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -119,7 +111,7 @@ services:
       args: foo bar
       rel_dir: my/package
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -157,7 +149,7 @@ services:
       interval: 3
       delay: 3
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -191,7 +183,7 @@ services:
     exec:
       cmd: ls /
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -223,7 +215,7 @@ services:
     exec:
       cmd: ls /
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	_, err := ReadConfig(dir)
 
@@ -245,7 +237,7 @@ services:
     depends_on:
      - other-api
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	_, err := ReadConfig(dir)
 
@@ -265,7 +257,7 @@ services:
     healthcheck:
       interval: 1
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	_, err := ReadConfig(dir)
 
@@ -286,7 +278,7 @@ services:
       cmd: ls /
       interval: 0
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	_, err := ReadConfig(dir)
 
@@ -308,7 +300,7 @@ services:
       interval: 1
       delay: -1
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	_, err := ReadConfig(dir)
 
@@ -329,7 +321,7 @@ services:
     depends_on:
      - postgres
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -356,7 +348,7 @@ services:
     depends_on:
      - this-api
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -389,7 +381,7 @@ services:
     depends_on:
      - this-api
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -411,7 +403,7 @@ services:
       args: foo bar
       rel_dir: my/package
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 
@@ -431,7 +423,7 @@ services:
     gradle:
       module: foobar
 `)
-	defer cleanup(dir)
+	defer util.RmDir(dir)
 
 	config, err := ReadConfig(dir)
 

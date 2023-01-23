@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/eighty4/maestro/util"
 	"testing"
 )
 
 func TestNewProcess_StartsAndStops(t *testing.T) {
-	dir := tempDir()
-	defer cleanup(dir)
+	dir := util.MkTmpDir()
+	defer util.RmDir(dir)
 
 	process := NewProcess("ls", []string{"/"}, dir)
 	if process.Status != ProcessStopped {
@@ -23,8 +24,8 @@ func TestNewProcess_StartsAndStops(t *testing.T) {
 }
 
 func TestServiceProcess_StartsAndErrors(t *testing.T) {
-	dir := tempDir()
-	defer cleanup(dir)
+	dir := util.MkTmpDir()
+	defer util.RmDir(dir)
 
 	process := NewProcessFromExecString("sleep 0 && (exit 1)", dir)
 	go process.Start()
@@ -38,8 +39,8 @@ func TestServiceProcess_StartsAndErrors(t *testing.T) {
 }
 
 func TestNewProcess_StopProcess(t *testing.T) {
-	dir := tempDir()
-	defer cleanup(dir)
+	dir := util.MkTmpDir()
+	defer util.RmDir(dir)
 
 	process := NewProcess("sleep", []string{"9000"}, dir)
 	if process.Status != ProcessStopped {

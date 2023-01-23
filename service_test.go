@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/eighty4/maestro/util"
 	"testing"
 	"time"
 )
@@ -21,8 +22,8 @@ func TestCreateServiceCommand_ForExecutableCommand(t *testing.T) {
 			Cmd: "ls /",
 		},
 	}
-	context := &MaestroContext{WorkDir: tempDir()}
-	defer cleanup(context.WorkDir)
+	context := &MaestroContext{WorkDir: util.MkTmpDir()}
+	defer util.RmDir(context.WorkDir)
 
 	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "ls" {
@@ -37,8 +38,8 @@ func TestCreateServiceCommand_ForGradleTask(t *testing.T) {
 	config := &ServiceConfig{
 		ProcessConfig: &GradleTaskConfig{"my-module", "my-task"},
 	}
-	context := &MaestroContext{WorkDir: tempDir()}
-	defer cleanup(context.WorkDir)
+	context := &MaestroContext{WorkDir: util.MkTmpDir()}
+	defer util.RmDir(context.WorkDir)
 
 	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "./gradlew" {
@@ -53,8 +54,8 @@ func TestCreateServiceCommand_ForNpmScript(t *testing.T) {
 	config := &ServiceConfig{
 		ProcessConfig: &NpmScriptConfig{"start", "--foo=bar", "my-yarn-workspace"},
 	}
-	context := &MaestroContext{WorkDir: tempDir()}
-	defer cleanup(context.WorkDir)
+	context := &MaestroContext{WorkDir: util.MkTmpDir()}
+	defer util.RmDir(context.WorkDir)
 
 	command := config.ProcessConfig.CreateProcess(context)
 	if command.Binary != "npm" {
@@ -74,8 +75,8 @@ func TestManagedService_WithoutHealthcheck_EmitsRunning(t *testing.T) {
 			Cmd: "sleep 2",
 		},
 	}
-	context := &MaestroContext{WorkDir: tempDir()}
-	defer cleanup(context.WorkDir)
+	context := &MaestroContext{WorkDir: util.MkTmpDir()}
+	defer util.RmDir(context.WorkDir)
 
 	service := NewManagedService(config, context)
 	status := service.Launch()
@@ -98,8 +99,8 @@ func TestManagedService_WithHealthcheck_EmitsHealthy(t *testing.T) {
 			Interval: 1,
 		},
 	}
-	context := &MaestroContext{WorkDir: tempDir()}
-	defer cleanup(context.WorkDir)
+	context := &MaestroContext{WorkDir: util.MkTmpDir()}
+	defer util.RmDir(context.WorkDir)
 
 	service := NewManagedService(config, context)
 	status := service.Launch()
