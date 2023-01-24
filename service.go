@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/eighty4/maestro/composable"
+	"github.com/eighty4/maestro/util"
 	"log"
 	"sync"
 )
@@ -8,19 +10,19 @@ import (
 type ServiceStatus string
 
 const (
-	ServiceStarting = "Starting" // initial status before run or healthcheck
-	ServiceRunning  = "Running"  // running service w/o healthcheck
-	ServiceHealthy  = "Healthy"  // running service with passing healthcheck
-	ServiceFailing  = "Failing"  // running service with failing healthcheck
-	ServiceStopped  = "Stopped"  // stopped service with exit code 0
-	ServiceError    = "Error"    // stopped service with non-zero exit code
+	ServiceStarting ServiceStatus = "Starting" // initial status before run or healthcheck
+	ServiceRunning  ServiceStatus = "Running"  // running service w/o healthcheck
+	ServiceHealthy  ServiceStatus = "Healthy"  // running service with passing healthcheck
+	ServiceFailing  ServiceStatus = "Failing"  // running service with failing healthcheck
+	ServiceStopped  ServiceStatus = "Stopped"  // stopped service with exit code 0
+	ServiceError    ServiceStatus = "Error"    // stopped service with non-zero exit code
 )
 
 type ManagedService struct {
 	Context     *MaestroContext
 	Config      *ServiceConfig
-	Process     *Process
-	Healthcheck *Healthcheck `json:"omitempty"`
+	Process     *composable.Process
+	Healthcheck *composable.Healthcheck `json:"omitempty"`
 	Status      ServiceStatus
 }
 
@@ -31,7 +33,6 @@ func NewManagedService(serviceConfig *ServiceConfig, context *MaestroContext) *M
 		Process: serviceConfig.ProcessConfig.CreateProcess(context),
 		Status:  ServiceStopped,
 	}
-	service.Process.Logging.Prefix = serviceConfig.Name
 	return service
 }
 
@@ -39,7 +40,9 @@ func (ms *ManagedService) Launch() <-chan ServiceStatus {
 	status := make(chan ServiceStatus)
 	go ms.Process.Start()
 	if ms.Config.Healthcheck != nil {
-		ms.Healthcheck = NewHealthcheck(ms.Config.Healthcheck, ms.Context)
+		hc := ms.Config.Healthcheck
+		exec := composable.ParseCmdString(hc.Cmd, ms.Context.WorkDir)
+		ms.Healthcheck = composable.NewExecHealthcheck(exec, util.Seconds(hc.Delay), util.Seconds(hc.Interval))
 		go ms.Healthcheck.Start()
 	}
 	go ms.waitForServiceReady(status)
@@ -47,24 +50,25 @@ func (ms *ManagedService) Launch() <-chan ServiceStatus {
 }
 
 func (ms *ManagedService) waitForServiceReady(status chan<- ServiceStatus) {
+	print("waitForServiceReady\n")
 	ms.updateStatus(status, ServiceStarting)
-	var hcStatus <-chan HealthcheckStatus
-	var pStatus <-chan ProcessStatus
+	var hcStatus <-chan composable.HealthcheckStatus
+	var pStatus <-chan composable.ProcessStatus
 	if ms.Healthcheck != nil {
-		hcStatus = ms.Healthcheck.StatusUpdate
+		hcStatus = ms.Healthcheck.StatusC
 	} else {
-		pStatus = ms.Process.StatusUpdate
+		pStatus = ms.Process.StatusC
 	}
 	for {
 		select {
 		case s := <-hcStatus:
-			if s == HealthcheckPassing {
+			if s == composable.HealthcheckPassing {
 				ms.updateStatus(status, ServiceHealthy)
 				return
 			}
 			break
 		case s := <-pStatus:
-			if s == ProcessRunning {
+			if s == composable.ProcessRunning {
 				ms.updateStatus(status, ServiceRunning)
 				return
 			}
@@ -74,6 +78,7 @@ func (ms *ManagedService) waitForServiceReady(status chan<- ServiceStatus) {
 }
 
 func (ms *ManagedService) updateStatus(c chan<- ServiceStatus, s ServiceStatus) {
+	log.Println("[DEBUG] ManagedService.updateStatus", s)
 	ms.Status = s
 	select {
 	case c <- s:

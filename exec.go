@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/eighty4/maestro/composable"
 	"strings"
 )
 
@@ -8,10 +9,9 @@ type ExecConfig struct {
 	Cmd string
 }
 
-func (c *ExecConfig) CreateProcess(context *MaestroContext) *Process {
+func (c *ExecConfig) CreateProcess(context *MaestroContext) *composable.Process {
 	binary, args := ParseExecString(c.Cmd)
-	process := NewProcess(binary, args, context.WorkDir)
-	process.Logging.print = true
+	process := composable.NewProcess(binary, args, context.WorkDir)
 	return process
 }
 

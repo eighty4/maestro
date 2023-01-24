@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/eighty4/maestro/composable"
 	"runtime"
 )
 
@@ -10,14 +11,13 @@ type GradleTaskConfig struct {
 	Task   string
 }
 
-func (c *GradleTaskConfig) CreateProcess(context *MaestroContext) *Process {
-	var process *Process
+func (c *GradleTaskConfig) CreateProcess(context *MaestroContext) *composable.Process {
+	var process *composable.Process
 	args := []string{"-q", "--console=plain", fmt.Sprintf("%s:%s", c.Module, c.Task)}
 	if runtime.GOOS == "windows" {
-		process = NewProcess(".\\gradlew", args, context.WorkDir)
+		process = composable.NewProcess(".\\gradlew", args, context.WorkDir)
 	} else {
-		process = NewProcess("./gradlew", args, context.WorkDir)
+		process = composable.NewProcess("./gradlew", args, context.WorkDir)
 	}
-	process.Logging.print = true
 	return process
 }

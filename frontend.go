@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/eighty4/maestro/composable"
 	"github.com/eighty4/sse"
 	"log"
 	"net/http"
@@ -106,7 +107,7 @@ func serveBuiltFiles(dir string) {
 }
 
 func startDevServer(dir string) {
-	NewProcess("npm", []string{"run", "dev"}, dir).Start()
+	composable.NewProcess("npm", []string{"run", "dev"}, dir).Start()
 	frontendDevServer := exec.Command("npm", "run", "dev")
 	frontendDevServer.Dir = dir
 	frontendDevServer.Stdout = os.Stdout

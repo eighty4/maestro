@@ -134,7 +134,7 @@ func TestInitServices_HandlesDependsOn(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	if orchestration.Services["two"].Process.Status != ServiceRunning {
+	if orchestration.Services["two"].Status != ServiceRunning {
 		t.Error(orchestration.Services["two"].Process.Status)
 	}
 }

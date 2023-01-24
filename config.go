@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/eighty4/maestro/composable"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ type ServiceConfig struct {
 }
 
 type ProcessConfig interface {
-	CreateProcess(context *MaestroContext) *Process
+	CreateProcess(context *MaestroContext) *composable.Process
 }
 
 type HealthcheckConfig struct {
