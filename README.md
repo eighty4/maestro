@@ -1,3 +1,6 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/eighty4/maestro.svg)](https://pkg.go.dev/github.com/eighty4/maestro)
+[![CI](https://img.shields.io/github/actions/workflow/status/eighty4/maestro/test.yml)](https://github.com/eighty4/maestro/actions/workflows/test.yml)
+
 # Maestro
 
 a developer utility to configure and manage services and platform components for local development. built with Go.
