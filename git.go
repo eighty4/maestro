@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/eighty4/maestro/util"
 	"github.com/fatih/color"
 	"log"
 	"os"
@@ -31,11 +32,11 @@ type WorkspaceDir struct {
 	LocalCount int
 }
 
-func NewWorkspaceDir(ctx *MaestroContext, dirName string) WorkspaceDir {
-	strings.Join([]string{ctx.WorkDir, dirName}, string(os.PathSeparator))
+func NewWorkspaceDir(dirName string) WorkspaceDir {
+	strings.Join([]string{util.Cwd(), dirName}, string(os.PathSeparator))
 	return WorkspaceDir{
 		Dir:  dirName,
-		Path: strings.Join([]string{ctx.WorkDir, dirName}, string(os.PathSeparator)),
+		Path: strings.Join([]string{util.Cwd(), dirName}, string(os.PathSeparator)),
 	}
 }
 
@@ -146,16 +147,14 @@ func (wd *WorkspaceDir) SetLocalCommitCount() {
 }
 
 type WorkspaceGitPull struct {
-	ctx            *MaestroContext
 	repos          []*WorkspaceDir
 	reprint        bool
 	maxRepoNameLen int
 	mutex          sync.Mutex
 }
 
-func NewWorkspaceGitPull(ctx *MaestroContext) *WorkspaceGitPull {
+func NewWorkspaceGitPull() *WorkspaceGitPull {
 	return &WorkspaceGitPull{
-		ctx:     ctx,
 		reprint: false,
 	}
 }
@@ -197,7 +196,7 @@ func (gp *WorkspaceGitPull) initRepositories() {
 	var wg sync.WaitGroup
 	var maxRepoNameLen = 0
 
-	for _, repo := range directories(gp.ctx) {
+	for _, repo := range directories() {
 		wg.Add(1)
 		go func(repo *WorkspaceDir) {
 			if repo.IsGitRepo() {
@@ -281,15 +280,15 @@ func (gp *WorkspaceGitPull) printPullState() {
 	}
 }
 
-func directories(ctx *MaestroContext) []*WorkspaceDir {
+func directories() []*WorkspaceDir {
 	var dirs []*WorkspaceDir
-	files, err := os.ReadDir(ctx.WorkDir)
+	files, err := os.ReadDir(util.Cwd())
 	if err != nil {
 		log.Fatalln("err workspace dir walk", err)
 	} else {
 		for _, file := range files {
 			if file.IsDir() {
-				dir := NewWorkspaceDir(ctx, file.Name())
+				dir := NewWorkspaceDir(file.Name())
 				dirs = append(dirs, &dir)
 			}
 		}
