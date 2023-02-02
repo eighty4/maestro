@@ -1,6 +1,6 @@
 module github.com/eighty4/maestro
 
-go 1.7
+go 1.19
 
 require (
 	github.com/eighty4/sse v0.0.0-20201023181743-277424528b56

@@ -3,7 +3,11 @@
 
 # Maestro
 
-A developer utility that synchronizes and orchestrates local dev environments.
+A developer utility.
+
+## Getting started
+
+Use Go 1.19 or later, and run `go install github.com/eighty4/maestro@latest`.
 
 ## Workspaces
 

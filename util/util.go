@@ -14,12 +14,17 @@ func Cwd() string {
 	return cwd
 }
 
-func Debug() bool {
+func IsDebug() bool {
 	return os.Getenv("MAESTRO_DEBUG") == "true"
 }
 
 func Duration(duration time.Duration, n int8) time.Duration {
 	return time.Duration(int64(duration) * int64(n))
+}
+
+func IsDir(path string) bool {
+	stat, err := os.Stat(path)
+	return err == nil && stat.IsDir()
 }
 
 func Seconds(n int8) time.Duration {

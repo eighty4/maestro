@@ -3,5 +3,7 @@ go 1.19
 use (
 	.
 	./composable
+	./git
+	./testutil
 	./util
 )
