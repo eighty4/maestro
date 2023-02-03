@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewWorkspace_WithoutRepoScan(t *testing.T) {
-	repos := []*Repository{{"repo", "/work/repo", "https://github.com/eighty4/repo"}}
+	repos := []*Repository{NewRepository("repo", "/work/repo", "https://github.com/eighty4/repo")}
 	work := NewWorkspace("/work", repos, 0)
 	assert.Equal(t, "/work", work.RootDir)
 	assert.Equal(t, repos[0], work.Repositories["/work/repo"])
@@ -25,5 +25,5 @@ func TestNewWorkspace_WithRepoScan(t *testing.T) {
 	assert.Len(t, work.Repositories, 1)
 	assert.Equal(t, "repo", work.Repositories[repoDir].Name)
 	assert.Equal(t, repoDir, work.Repositories[repoDir].Dir)
-	assert.Equal(t, "", work.Repositories[repoDir].Url)
+	assert.Equal(t, "", work.Repositories[repoDir].Git.Url)
 }

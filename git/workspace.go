@@ -40,6 +40,7 @@ type Workspace struct {
 // Use repoScanDepth to specify how deep subdirectories should be scanned for additional repositories.
 // repoScanDepth=0 skips subdirectory scanning.
 func NewWorkspace(rootDir string, repositories []*Repository, repoScanDepth int) *Workspace {
+	// todo add error to signature and return validation errors
 	reposAsMap := make(map[string]*Repository)
 	for _, repo := range repositories {
 		reposAsMap[repo.Dir] = repo
@@ -80,7 +81,7 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 		for _, repo := range clone {
 			repo := repo
 			go func() {
-				cc := Clone(repo.Dir, repo.Url)
+				cc := Clone(repo.Dir, repo.Git.Url)
 				for {
 					s := <-cc
 					switch s.Status {

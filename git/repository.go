@@ -8,7 +8,13 @@ type Repository struct {
 	Name string
 	// Dir is the absolute path to the repository.
 	Dir string
-	// url is the local clone's git remote origin.
+	// Git provides access To GitDetails data such as GitDetails.Url.
+	Git *GitDetails
+}
+
+// GitDetails contains git program details for Repository.
+type GitDetails struct {
+	// Url is the repo's git remote origin.
 	Url string
 }
 
@@ -17,6 +23,6 @@ func NewRepository(name string, dir string, url string) *Repository {
 	return &Repository{
 		Name: name,
 		Dir:  dir,
-		Url:  url,
+		Git:  &GitDetails{Url: url},
 	}
 }
