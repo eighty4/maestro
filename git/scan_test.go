@@ -10,8 +10,8 @@ import (
 func TestScanForRepositories_RepositoriesInRootDir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir1"))
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir2"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir1"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir2"))
 	testutil.MkDir(t, path.Join(dir, "dir3"))
 	testutil.MkDir(t, path.Join(dir, "dir4"))
 	testutil.MkFile(t, dir, "file1")
@@ -26,8 +26,8 @@ func TestScanForRepositories_NestedRepositories_BeyondScanDepth(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.MkDir(t, path.Join(dir, "dir1"))
 	testutil.MkDir(t, path.Join(dir, "dir2"))
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir1", "subdir1"))
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir1", "subdir2"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir1", "subdir1"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir1", "subdir2"))
 	testutil.MkFile(t, dir, "file1")
 	testutil.MkFile(t, dir, "file2")
 
@@ -40,8 +40,8 @@ func TestScanForRepositories_NestedRepositories_WithinScanDepth(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.MkDir(t, path.Join(dir, "dir1"))
 	testutil.MkDir(t, path.Join(dir, "dir2"))
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir1", "subdir1"))
-	testutil.MkDirAndInitGitRepo(t, path.Join(dir, "dir1", "subdir2"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir1", "subdir1"))
+	testutil.MkDirAndInitRepo(t, path.Join(dir, "dir1", "subdir2"))
 	testutil.MkFile(t, dir, "file1")
 	testutil.MkFile(t, dir, "file2")
 
@@ -110,7 +110,7 @@ func TestSubdirectories_NoDir(t *testing.T) {
 func TestIsGitRepoRootDir_RepoRoot(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 
 	assert.True(t, isTopLevelGitRepoDir(dir))
 }
@@ -118,7 +118,7 @@ func TestIsGitRepoRootDir_RepoRoot(t *testing.T) {
 func TestIsGitRepoRootDir_RepoSubdir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 	testutil.MkDir(t, path.Join(dir, "subdir"))
 
 	assert.False(t, isTopLevelGitRepoDir(path.Join(dir, "subdir")))

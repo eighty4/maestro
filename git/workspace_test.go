@@ -18,7 +18,7 @@ func TestNewWorkspace_WithRepoScan(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	repoDir := path.Join(dir, "repo")
-	testutil.MkDirAndInitGitRepo(t, repoDir)
+	testutil.MkDirAndInitRepo(t, repoDir)
 
 	var repos []*Repository
 	work := NewWorkspace(dir, repos, 1)

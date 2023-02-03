@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-func MkDirAndInitGitRepo(t *testing.T, dir string) {
+func MkDirAndInitRepo(t *testing.T, dir string) {
 	MkDir(t, dir)
-	InitGitRepo(t, dir)
+	InitRepo(t, dir)
 }
 
-func InitGitRepo(t *testing.T, dir string) {
+func InitRepo(t *testing.T, dir string) {
 	gitInit := exec.Command("git", "init")
 	gitInit.Dir = dir
 	gitInit.Stdout = os.Stdout
@@ -23,17 +23,19 @@ func InitGitRepo(t *testing.T, dir string) {
 	}
 }
 
-func CloneGitRepo(t *testing.T, dir string, url string) {
+func CloneRepo(t *testing.T, dir string, url string) {
 	cloneCmd := exec.Command("git", "clone", url, dir)
+	var stderr bytes.Buffer
+	cloneCmd.Stderr = &stderr
 	err := cloneCmd.Run()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal(stderr.String())
 	} else if cloneCmd.ProcessState.ExitCode() != 0 {
 		t.Fatal("git clone error")
 	}
 }
 
-func GitCheckout(t *testing.T, dir string, branchOrCommitHash string) {
+func Checkout(t *testing.T, dir string, branchOrCommitHash string) {
 	checkoutCmd := exec.Command("git", "checkout", branchOrCommitHash)
 	checkoutCmd.Dir = dir
 	err := checkoutCmd.Run()
