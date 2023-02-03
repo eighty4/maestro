@@ -19,3 +19,17 @@ jobs:
       - run: git config --global user.email "adam.be.g84d@gmail.com"
       - run: go build
       - run: go list -f '{{.Dir}}' -m | xargs go test
+      - run: go mod tidy
+      - run: |
+          cd composable
+          go mod tidy
+      - run: |
+          cd git
+          go mod tidy
+      - run: |
+          cd testutil
+          go mod tidy
+      - run: |
+          cd util
+          go mod tidy
+      - run: git diff --exit-code
