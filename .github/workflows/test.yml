@@ -14,22 +14,32 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.19.5
-      - run: git config --global init.defaultBranch main
-      - run: git config --global user.name "Adam McKee"
-      - run: git config --global user.email "adam.be.g84d@gmail.com"
-      - run: go build
-      - run: go list -f '{{.Dir}}' -m | xargs go test
-      - run: go mod tidy
-      - run: |
+      - name: git config
+        run: |
+          git config --global init.defaultBranch main
+          git config --global user.name "Adam McKee"
+          git config --global user.email "adam.be.g84d@gmail.com"
+      - name: build
+        run: go build
+      - name: test
+        run: go list -f '{{.Dir}}' -m | xargs go test
+      - name: tidy maestro
+        run: go mod tidy
+      - name: tidy composable
+        run: |
           cd composable
           go mod tidy
-      - run: |
+      - name: tidy git
+        run: |
           cd git
           go mod tidy
-      - run: |
+      - name: tidy testutil
+        run: |
           cd testutil
           go mod tidy
-      - run: |
+      - name: tidy util
+        run: |
           cd util
           go mod tidy
-      - run: git diff --exit-code
+      - name: diff
+        run: git diff --exit-code
