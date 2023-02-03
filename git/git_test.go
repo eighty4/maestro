@@ -51,7 +51,7 @@ func TestClone_Fails(t *testing.T) {
 func TestPull(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, dir, 1)
 
 	p := Pull(dir)
@@ -71,7 +71,7 @@ func TestPull(t *testing.T) {
 func TestPull_WithLocalCommits(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.CommitNewFile(t, dir, "file1")
 
 	p := Pull(dir)
@@ -108,8 +108,8 @@ func TestPull_Fails_DirNotRepo(t *testing.T) {
 func TestPull_Fails_WithDetachedHead(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
-	testutil.GitCheckout(t, dir, "5692a1bb7f5796ec3c0237c8cb0a87212b36b91e")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.Checkout(t, dir, "5692a1bb7f5796ec3c0237c8cb0a87212b36b91e")
 
 	p := Pull(dir)
 	if update := <-p; update.Status != Pulling {
@@ -127,7 +127,7 @@ func TestPull_Fails_WithDetachedHead(t *testing.T) {
 func TestPull_Fails_WithDivergentBranches(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, dir, 1)
 	testutil.CommitNewFile(t, dir, "file1")
 
@@ -147,7 +147,7 @@ func TestPull_Fails_WithDivergentBranches(t *testing.T) {
 func TestPull_Fails_WithMergeConflict_WhenMerging(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, dir, 1)
 	testutil.OpenFileForOverwriting(t, dir, "README.md", func(f *os.File) {
 		if _, err := f.WriteString("merge conflict"); err != nil {
@@ -172,7 +172,7 @@ func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
 	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, dir, 1)
 	testutil.OpenFileForOverwriting(t, dir, "README.md", func(f *os.File) {
 		if _, err := f.WriteString("merge conflict"); err != nil {
@@ -207,7 +207,7 @@ func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
 func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 
 	p := Pull(dir)
 	if update := <-p; update.Status != Pulling {
@@ -226,7 +226,7 @@ func TestPull_Fails_WithUnstagedChanges(t *testing.T) {
 	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.OpenFileForWriting(t, dir, "README.md", func(f *os.File) {
 		if _, err := f.WriteString("unstaged change"); err != nil {
 			t.Fatal(err)
@@ -258,7 +258,7 @@ func TestRevParseShowTopLevel_NotRepo(t *testing.T) {
 func TestRevParseShowTopLevel_TopLevelDir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 
 	result, err := RevParseShowTopLevel(dir)
 	assert.Nil(t, err)
@@ -268,7 +268,7 @@ func TestRevParseShowTopLevel_TopLevelDir(t *testing.T) {
 func TestRevParseShowTopLevel_Subdir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 	subdir := path.Join(dir, "foo")
 	testutil.MkDir(t, subdir)
 
@@ -280,7 +280,7 @@ func TestRevParseShowTopLevel_Subdir(t *testing.T) {
 func TestStatus_NoLocalCommits(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.InitGitRepo(t, dir)
+	testutil.InitRepo(t, dir)
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
@@ -290,7 +290,7 @@ func TestStatus_NoLocalCommits(t *testing.T) {
 func TestStatus_WithLocalCommits(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneGitRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.CommitNewFile(t, dir, "file1")
 	testutil.CommitNewFile(t, dir, "file2")
 
