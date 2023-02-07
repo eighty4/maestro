@@ -16,16 +16,30 @@ func main() {
 	}
 	util.InitLogging()
 
+	cfg, err := parseConfig(util.Cwd())
+	if err != nil {
+		println("config error:\n  " + err.Error())
+		os.Exit(1)
+	}
+
+	if util.IsDebug() && cfg != nil {
+		log.Printf("%s has %d repositories", cfg.Filename, len(cfg.Repositories))
+	}
+
 	if len(os.Args) > 1 && os.Args[1] == "git" {
-		gitSync()
+		gitSync(cfg)
 	} else {
 		println("run 'maestro git' to perform a sync of your local workspace")
 		os.Exit(1)
 	}
 }
 
-func gitSync() {
-	ws := git.NewWorkspace(util.Cwd(), []*git.Repository{}, 2)
+func gitSync(cfg *Config) {
+	var repositories []*git.Repository
+	if cfg != nil {
+		repositories = cfg.Repositories
+	}
+	ws := git.NewWorkspace(util.Cwd(), repositories, 2)
 	maxNameLen := 0
 	for _, repo := range ws.Repositories {
 		nameLen := len(repo.Name)

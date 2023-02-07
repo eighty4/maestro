@@ -1,5 +1,9 @@
 package git
 
+import (
+	"strings"
+)
+
 // Repository represents a cloned git repo within a Workspace.
 // Instances for local repositories within a workspace can be instantiated with ScanForRepositories or NewWorkspace.
 type Repository struct {
@@ -11,6 +15,8 @@ type Repository struct {
 	// Git specific config for the repository remote such as RemoteDetails.Url.
 	Git *RemoteDetails
 }
+
+const urlPattern = `^(git@|https:\/\/)(github.com)(:|\/)(.+)\/(.+)\.git$`
 
 // RemoteDetails contains git program details for a Repository.
 type RemoteDetails struct {
@@ -24,5 +30,15 @@ func NewRepository(name string, dir string, url string) *Repository {
 		Name: name,
 		Dir:  dir,
 		Git:  &RemoteDetails{Url: url},
+	}
+}
+
+func RepoNameFromUrl(url string) string {
+	repoName := url[strings.LastIndex(url, "/")+1:]
+	extPos := strings.Index(repoName, ".git")
+	if extPos == -1 {
+		return repoName
+	} else {
+		return repoName[:extPos]
 	}
 }
