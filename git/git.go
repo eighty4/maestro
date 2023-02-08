@@ -32,6 +32,7 @@ const (
 	MergeConflict     PullStatus = "MergeConflict"
 	DetachedHead      PullStatus = "DetachedHead"
 	DivergentBranches PullStatus = "DivergentBranches"
+	RemoteRefMissing  PullStatus = "RemoteRefMissing"
 	UnsetUpstream     PullStatus = "UnsetUpstream"
 	UnstagedChanges   PullStatus = "UnstagedChanges"
 	PullFailed        PullStatus = "PullFailed"
@@ -112,6 +113,8 @@ func Pull(dir string) <-chan *PullUpdate {
 				c <- &PullUpdate{Status: DivergentBranches, Message: pullDivergentBranchesMsg}
 			} else if strings.Contains(stderrStr, pullDetachedHeadErr) {
 				c <- &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
+			} else if strings.Contains(stderrStr, pullRemoteRefMissingErr) {
+				c <- &PullUpdate{Status: RemoteRefMissing, Message: pullRemoteRefMissingMsg}
 			} else if strings.Contains(stderrStr, pullUnstagedChangesErr) {
 				c <- &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
 			} else if strings.Contains(stderrStr, pullUnsetUpstreamErr) {
@@ -134,6 +137,8 @@ const (
 	pullMergeConflictMsg     = "merge conflict"
 	pullRebaseConflictErr    = "CONFLICT"
 	pullRebaseConflictMsg    = "merge conflict (don't worry, rebase was aborted)"
+	pullRemoteRefMissingErr  = "from the remote, but no such ref was fetched."
+	pullRemoteRefMissingMsg  = "tracking branch not found on remote"
 	pullUnstagedChangesErr   = "You have unstaged changes."
 	pullUnstagedChangesMsg   = "unstaged changes"
 	pullUnsetUpstreamErr     = "There is no tracking information for the current branch."

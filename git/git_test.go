@@ -217,6 +217,32 @@ func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
 	}
 }
 
+func TestPull_Fails_WithRemoteRefMissing(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+
+	gitCommitCmd := exec.Command("git", "config", "branch.main.merge", "macrame")
+	gitCommitCmd.Dir = dir
+	var gitCommitCmdStderr bytes.Buffer
+	gitCommitCmd.Stderr = &gitCommitCmdStderr
+	if err := gitCommitCmd.Run(); err != nil {
+		t.Fatal(gitCommitCmdStderr.String())
+	}
+
+	p := Pull(dir)
+	if update := <-p; update.Status != Pulling {
+		t.Fatal()
+	} else {
+		assert.Equal(t, "", update.Message)
+	}
+	if update := <-p; update.Status != RemoteRefMissing {
+		t.Fatal(fmt.Sprintf("%s (expected) != %s (actual)", RemoteRefMissing, update.Status))
+	} else {
+		assert.Equal(t, "tracking branch not found on remote", update.Message)
+	}
+}
+
 func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
