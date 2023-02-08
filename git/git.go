@@ -54,7 +54,6 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 	go func() {
 		c <- &CloneUpdate{Status: Cloning}
 		gitCloneCmd := exec.Command("git", "clone", url, dir)
-		gitCloneCmd.Dir = dir
 		var stderr bytes.Buffer
 		gitCloneCmd.Stdout = nil
 		gitCloneCmd.Stderr = &stderr
@@ -170,6 +169,7 @@ func RevListCommitCount(dir string, fromCommitHash string, toCommitHash string) 
 	gitCmtCountCmd.Dir = dir
 	var stdout bytes.Buffer
 	gitCmtCountCmd.Stdout = &stdout
+	gitCmtCountCmd.Stderr = nil
 	gitCmtCountCmd.Stderr = nil
 	err := gitCmtCountCmd.Run()
 	if err != nil {
