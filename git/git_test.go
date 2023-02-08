@@ -100,7 +100,7 @@ fatal: not a git repository (or any of the parent directories): .git`
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	testPullChannel(t, Pull(dir), PullFailed, "exit status 128", nil)
+	testPullChannel(t, Pull(dir), NotRepository, "not a repository", nil)
 }
 
 func TestPull_Fails_WithDetachedHead(t *testing.T) {
