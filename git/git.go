@@ -38,6 +38,7 @@ const (
 	RemoteBranchNotFound PullStatus = "RemoteBranchNotFound"
 	UnsetUpstream        PullStatus = "UnsetUpstream"
 	UnstagedChanges      PullStatus = "UnstagedChanges"
+	NotRepository        PullStatus = "NotRepository"
 	PullFailed           PullStatus = "PullFailed"
 )
 
@@ -140,8 +141,10 @@ func Pull(dir string) <-chan *PullUpdate {
 				c <- &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
 			} else if strings.Contains(stderrStr, pullUnsetUpstreamErr) {
 				c <- &PullUpdate{Status: UnsetUpstream, Message: pullUnsetUpstreamMsg}
-			} else if strings.Contains(stderrStr, pullCouldNotResolveHostMsg) {
-				c <- &PullUpdate{Status: CouldNotResolveHost, Message: "asdf"}
+			} else if strings.Contains(stderrStr, pullCouldNotResolveHostErr) {
+				c <- &PullUpdate{Status: CouldNotResolveHost, Message: pullCouldNotResolveHostMsg}
+			} else if strings.Index(stderrStr, pullNotRepositoryErr) == 0 {
+				c <- &PullUpdate{Status: NotRepository, Message: pullNotRepositoryMsg}
 			} else if strings.Index(stderrStr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderrStr, pullRepositoryNotFoundErrPost) != -1 {
 				c <- &PullUpdate{Status: RepositoryNotFound, Message: pullRepositoryNotFoundMsg}
 			} else {
@@ -175,6 +178,8 @@ const (
 	pullRepositoryNotFoundErrPre    = "fatal: repository"
 	pullRepositoryNotFoundErrPost   = "not found"
 	pullRepositoryNotFoundMsg       = "repository not found"
+	pullNotRepositoryErr            = "fatal: not a git repository (or any of the parent directories): .git"
+	pullNotRepositoryMsg            = "not a repository"
 	pullCouldNotResolveHostErr      = "Could not resolve host: "
 	pullCouldNotResolveHostMsg      = "could not resolve host"
 )
