@@ -27,15 +27,18 @@ type CloneUpdate struct {
 type PullStatus string
 
 const (
-	Pulling           PullStatus = "Pulling"
-	Pulled            PullStatus = "Pulled"
-	MergeConflict     PullStatus = "MergeConflict"
-	DetachedHead      PullStatus = "DetachedHead"
-	DivergentBranches PullStatus = "DivergentBranches"
-	RemoteRefMissing  PullStatus = "RemoteRefMissing"
-	UnsetUpstream     PullStatus = "UnsetUpstream"
-	UnstagedChanges   PullStatus = "UnstagedChanges"
-	PullFailed        PullStatus = "PullFailed"
+	Pulling              PullStatus = "Pulling"
+	Pulled               PullStatus = "Pulled"
+	CouldNotResolveHost  PullStatus = "CouldNotResolveHost"
+	ConnectionFailure    PullStatus = "ConnectionFailure"
+	MergeConflict        PullStatus = "MergeConflict"
+	DetachedHead         PullStatus = "DetachedHead"
+	DivergentBranches    PullStatus = "DivergentBranches"
+	RepositoryNotFound   PullStatus = "RepositoryNotFound"
+	RemoteBranchNotFound PullStatus = "RemoteBranchNotFound"
+	UnsetUpstream        PullStatus = "UnsetUpstream"
+	UnstagedChanges      PullStatus = "UnstagedChanges"
+	PullFailed           PullStatus = "PullFailed"
 )
 
 type PullUpdate struct {
@@ -70,6 +73,7 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 				c <- &CloneUpdate{Status: CloneFailed, Message: err.Error()}
 			}
 		}
+		close(c)
 	}()
 	return c
 }
@@ -104,7 +108,24 @@ func Pull(dir string) <-chan *PullUpdate {
 			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: s}
 		} else {
 			stderrStr := stderr.String()
-			if strings.Contains(stderrStr, pullMergeConflictErr) {
+			println(stderrStr)
+			if strings.Contains(stderrStr, pullConnectionFailureErr) {
+				errI := strings.Index(stderrStr, pullConnectionFailureErr)
+				if errI == 0 {
+					c <- &PullUpdate{Status: ConnectionFailure, Message: pullConnectionFailureMsg}
+				} else {
+					substrEnd := errI - 1
+					if stderrStr[substrEnd-1] == '.' {
+						substrEnd--
+					}
+					message := stderrStr[0:substrEnd]
+					if message == pullGitHubRepositoryNotFoundErr {
+						c <- &PullUpdate{Status: RepositoryNotFound, Message: pullRepositoryNotFoundMsg}
+					} else {
+						c <- &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
+					}
+				}
+			} else if strings.Contains(stderrStr, pullMergeConflictErr) {
 				c <- &PullUpdate{Status: MergeConflict, Message: pullMergeConflictMsg}
 			} else if strings.Contains(stdoutStr, pullRebaseConflictErr) {
 				_ = RebaseAbort(dir)
@@ -113,36 +134,49 @@ func Pull(dir string) <-chan *PullUpdate {
 				c <- &PullUpdate{Status: DivergentBranches, Message: pullDivergentBranchesMsg}
 			} else if strings.Contains(stderrStr, pullDetachedHeadErr) {
 				c <- &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
-			} else if strings.Contains(stderrStr, pullRemoteRefMissingErr) {
-				c <- &PullUpdate{Status: RemoteRefMissing, Message: pullRemoteRefMissingMsg}
+			} else if strings.Contains(stderrStr, pullRemoteBranchNotFoundErr) {
+				c <- &PullUpdate{Status: RemoteBranchNotFound, Message: pullRemoteBranchNotFoundMsg}
 			} else if strings.Contains(stderrStr, pullUnstagedChangesErr) {
 				c <- &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
 			} else if strings.Contains(stderrStr, pullUnsetUpstreamErr) {
 				c <- &PullUpdate{Status: UnsetUpstream, Message: pullUnsetUpstreamMsg}
+			} else if strings.Contains(stderrStr, pullCouldNotResolveHostMsg) {
+				c <- &PullUpdate{Status: CouldNotResolveHost, Message: "asdf"}
+			} else if strings.Index(stderrStr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderrStr, pullRepositoryNotFoundErrPost) != -1 {
+				c <- &PullUpdate{Status: RepositoryNotFound, Message: pullRepositoryNotFoundMsg}
 			} else {
 				log.Printf("[ERROR] git.Pull(%s) unhandled error; stderr: %s", dir, stderrStr)
 				c <- &PullUpdate{Status: PullFailed, Message: err.Error()}
 			}
 		}
+		close(c)
 	}()
 	return c
 }
 
 const (
-	pullDetachedHeadErr      = "You are not currently on a branch."
-	pullDetachedHeadMsg      = "detached from a branch"
-	pullDivergentBranchesErr = "You have divergent branches and need to specify how to reconcile them."
-	pullDivergentBranchesMsg = "divergent branches (require a merge or rebase)"
-	pullMergeConflictErr     = "Your local changes to the following files would be overwritten by merge:"
-	pullMergeConflictMsg     = "merge conflict"
-	pullRebaseConflictErr    = "CONFLICT"
-	pullRebaseConflictMsg    = "merge conflict (don't worry, rebase was aborted)"
-	pullRemoteRefMissingErr  = "from the remote, but no such ref was fetched."
-	pullRemoteRefMissingMsg  = "tracking branch not found on remote"
-	pullUnstagedChangesErr   = "You have unstaged changes."
-	pullUnstagedChangesMsg   = "unstaged changes"
-	pullUnsetUpstreamErr     = "There is no tracking information for the current branch."
-	pullUnsetUpstreamMsg     = "not tracking an upstream remote"
+	pullConnectionFailureErr        = "fatal: Could not read from remote repository."
+	pullConnectionFailureMsg        = "connection failure with remote repository"
+	pullGitHubRepositoryNotFoundErr = "ERROR: Repository not found"
+	pullDetachedHeadErr             = "You are not currently on a branch."
+	pullDetachedHeadMsg             = "detached from a branch"
+	pullDivergentBranchesErr        = "You have divergent branches and need to specify how to reconcile them."
+	pullDivergentBranchesMsg        = "divergent branches (require a merge or rebase)"
+	pullMergeConflictErr            = "Your local changes to the following files would be overwritten by merge:"
+	pullMergeConflictMsg            = "merge conflict"
+	pullRebaseConflictErr           = "CONFLICT"
+	pullRebaseConflictMsg           = "merge conflict (don't worry, rebase was aborted)"
+	pullRemoteBranchNotFoundErr     = "from the remote, but no such ref was fetched."
+	pullRemoteBranchNotFoundMsg     = "tracking branch not found on remote"
+	pullUnstagedChangesErr          = "You have unstaged changes."
+	pullUnstagedChangesMsg          = "unstaged changes"
+	pullUnsetUpstreamErr            = "There is no tracking information for the current branch."
+	pullUnsetUpstreamMsg            = "not tracking an upstream remote"
+	pullRepositoryNotFoundErrPre    = "fatal: repository"
+	pullRepositoryNotFoundErrPost   = "not found"
+	pullRepositoryNotFoundMsg       = "repository not found"
+	pullCouldNotResolveHostErr      = "Could not resolve host: "
+	pullCouldNotResolveHostMsg      = "could not resolve host"
 )
 
 func RebaseAbort(dir string) error {

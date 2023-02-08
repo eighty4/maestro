@@ -76,3 +76,13 @@ func CommitNewFile(t *testing.T, dir string, name string) {
 	MkFile(t, dir, name)
 	AddAndCommit(t, dir, name)
 }
+
+func SetGitRemoteOriginUrl(t *testing.T, dir string, url string) {
+	gitRemoteCmd := exec.Command("git", "remote", "set-url", "origin", url)
+	gitRemoteCmd.Dir = dir
+	var gitCommitCmdStderr bytes.Buffer
+	gitRemoteCmd.Stderr = &gitCommitCmdStderr
+	if err := gitRemoteCmd.Run(); err != nil {
+		t.Fatal(gitCommitCmdStderr.String())
+	}
+}
