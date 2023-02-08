@@ -18,11 +18,24 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestClone(t *testing.T) {
+func TestClone_DirExists(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
 	c := Clone(dir, "https://github.com/eighty4/sse")
+	if update := <-c; update.Status != Cloning {
+		t.Fatal()
+	}
+	if update := <-c; update.Status != Cloned {
+		t.Fatal()
+	}
+}
+
+func TestClone_DirDoesNotExist(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	c := Clone(path.Join(dir, "sse"), "https://github.com/eighty4/sse")
 	if update := <-c; update.Status != Cloning {
 		t.Fatal()
 	}
