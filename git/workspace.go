@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"github.com/eighty4/maestro/util"
+	"log"
 	"strings"
 	"sync"
 )
@@ -45,12 +46,14 @@ func NewWorkspace(rootDir string, repositories []*Repository, repoScanDepth int)
 	for _, repo := range repositories {
 		reposAsMap[repo.Dir] = repo
 	}
+	var scannedRepos []*Repository
 	if repoScanDepth > 0 {
-		scannedRepos := ScanForRepositories(rootDir, repoScanDepth)
+		scannedRepos = ScanForRepositories(rootDir, repoScanDepth)
 		for _, repo := range scannedRepos {
 			reposAsMap[repo.Dir] = repo
 		}
 	}
+	log.Printf("[DEBUG] NewWorkspace with %d arg repos and %d scanned repos\n", len(repositories), len(scannedRepos))
 	return &Workspace{
 		RootDir:      rootDir,
 		Repositories: reposAsMap,
@@ -85,16 +88,19 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 				for {
 					s := <-cc
 					switch s.Status {
+					case Cloning:
+						continue
 					case Cloned:
-						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncSuccess, Message: "cloned in " + repo.Dir}
+						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncSuccess, Message: "cloned from " + repo.Git.Url}
 						break
 					case CloneFailed:
 						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncFailure, Message: s.Message}
 						break
 					}
+					wg.Done()
+					return
 				}
 			}()
-			wg.Done()
 		}
 	}()
 

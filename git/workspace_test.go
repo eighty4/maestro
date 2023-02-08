@@ -27,3 +27,39 @@ func TestNewWorkspace_WithRepoScan(t *testing.T) {
 	assert.Equal(t, repoDir, work.Repositories[repoDir].Dir)
 	assert.Equal(t, "", work.Repositories[repoDir].Git.Url)
 }
+
+func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	repos := []*Repository{NewRepository("sse", path.Join(dir, "sse"), "git@github.com:eighty4/sse")}
+	work := NewWorkspace(dir, repos, 0)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncSuccess, update.Status)
+	assert.Equal(t, CloneSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "cloned from git@github.com:eighty4/sse", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
+
+func TestWorkspace_Sync_PullsRepo(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, path.Join(dir, "sse"), "git@github.com:eighty4/sse")
+
+	work := NewWorkspace(dir, []*Repository{}, 1)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncSuccess, update.Status)
+	assert.Equal(t, PullSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
