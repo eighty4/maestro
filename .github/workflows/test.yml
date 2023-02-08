@@ -19,6 +19,8 @@ jobs:
           git config --global init.defaultBranch main
           git config --global user.name "Adam McKee"
           git config --global user.email "adam.be.g84d@gmail.com"
+      - name: workspace sync
+        run: go work sync
       - name: build
         run: go build
       - name: test
