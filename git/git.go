@@ -70,19 +70,12 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 		if err == nil {
 			c <- &CloneUpdate{Status: Cloned}
 		} else {
-			stderrStr := stderr.String()
-			if strings.Contains(stderrStr, cloneConnectionFailureErr) {
-				c <- &CloneUpdate{Status: CloneFailed, Message: cloneConnectionFailureMsg}
-			} else if strings.Contains(stderrStr, cloneAuthFailedErr) {
-				c <- &CloneUpdate{Status: AuthRequired, Message: cloneAuthFailedMsg}
-			} else if strings.Contains(stderrStr, cloneRepoNotFoundErr) {
-				c <- &CloneUpdate{Status: CloneRepoNotFound, Message: cloneRepoNotFoundMsg}
-			} else if strings.Contains(stderrStr, cloneBadRequestErr) {
-				c <- &CloneUpdate{Status: BadRedirect, Message: cloneBadRequestMsg}
-			} else {
-				log.Printf("[ERROR] git.Clone(%s, %s) unhandled error; stderr: %s", dir, url, stderrStr)
-				c <- &CloneUpdate{Status: CloneFailed, Message: err.Error()}
+			update := makeCloneErrorUpdate(stderr.String())
+			if update == nil {
+				log.Printf("[ERROR] git.Clone(%s, %s) unhandled error; stderr: %s", dir, url, stderr.String())
+				update = &CloneUpdate{Status: CloneFailed, Message: err.Error()}
 			}
+			c <- update
 		}
 		close(c)
 	}()
@@ -99,6 +92,20 @@ const (
 	cloneBadRequestErr        = "fatal: unable to update url base from redirection:"
 	cloneBadRequestMsg        = "following http redirect did not connect to a git repository"
 )
+
+func makeCloneErrorUpdate(stderr string) *CloneUpdate {
+	if strings.Contains(stderr, cloneConnectionFailureErr) {
+		return &CloneUpdate{Status: CloneFailed, Message: cloneConnectionFailureMsg}
+	} else if strings.Contains(stderr, cloneAuthFailedErr) {
+		return &CloneUpdate{Status: AuthRequired, Message: cloneAuthFailedMsg}
+	} else if strings.Contains(stderr, cloneRepoNotFoundErr) {
+		return &CloneUpdate{Status: CloneRepoNotFound, Message: cloneRepoNotFoundMsg}
+	} else if strings.Contains(stderr, cloneBadRequestErr) {
+		return &CloneUpdate{Status: BadRedirect, Message: cloneBadRequestMsg}
+	} else {
+		return nil
+	}
+}
 
 func Pull(dir string) <-chan *PullUpdate {
 	// todo parameterize with Default, Merge, Rebase and FF-only behaviors
@@ -124,49 +131,14 @@ func Pull(dir string) <-chan *PullUpdate {
 			}
 			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: s}
 		} else {
-			stderrStr := stderr.String()
-			println(stderrStr)
-			if strings.Contains(stderrStr, pullConnectionFailureErr) {
-				errI := strings.Index(stderrStr, pullConnectionFailureErr)
-				if errI == 0 {
-					c <- &PullUpdate{Status: ConnectionFailure, Message: pullConnectionFailureMsg}
-				} else {
-					substrEnd := errI - 1
-					if stderrStr[substrEnd-1] == '.' {
-						substrEnd--
-					}
-					message := stderrStr[0:substrEnd]
-					if message == pullGitHubRepositoryNotFoundErr {
-						c <- &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
-					} else {
-						c <- &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
-					}
-				}
-			} else if strings.Contains(stderrStr, pullMergeConflictErr) {
-				c <- &PullUpdate{Status: MergeConflict, Message: pullMergeConflictMsg}
-			} else if strings.Contains(stdoutStr, pullRebaseConflictErr) {
+			update := makePullErrorUpdate(stderr.String())
+			if update == nil {
+				log.Printf("[ERROR] git.Pull(%s) unhandled error; stderr: %s", dir, stderr.String())
+				update = &PullUpdate{Status: PullFailed, Message: err.Error()}
+			} else if update.Status == MergeConflict {
 				_ = RebaseAbort(dir)
-				c <- &PullUpdate{Status: MergeConflict, Message: pullRebaseConflictMsg}
-			} else if strings.Contains(stderrStr, pullDivergentBranchesErr) {
-				c <- &PullUpdate{Status: DivergentBranches, Message: pullDivergentBranchesMsg}
-			} else if strings.Contains(stderrStr, pullDetachedHeadErr) {
-				c <- &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
-			} else if strings.Contains(stderrStr, pullRemoteBranchNotFoundErr) {
-				c <- &PullUpdate{Status: RemoteBranchNotFound, Message: pullRemoteBranchNotFoundMsg}
-			} else if strings.Contains(stderrStr, pullUnstagedChangesErr) {
-				c <- &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
-			} else if strings.Contains(stderrStr, pullUnsetUpstreamErr) {
-				c <- &PullUpdate{Status: UnsetUpstream, Message: pullUnsetUpstreamMsg}
-			} else if strings.Contains(stderrStr, pullCouldNotResolveHostErr) {
-				c <- &PullUpdate{Status: CouldNotResolveHost, Message: pullCouldNotResolveHostMsg}
-			} else if strings.Index(stderrStr, pullNotRepositoryErr) == 0 {
-				c <- &PullUpdate{Status: NotRepository, Message: pullNotRepositoryMsg}
-			} else if strings.Index(stderrStr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderrStr, pullRepositoryNotFoundErrPost) != -1 {
-				c <- &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
-			} else {
-				log.Printf("[ERROR] git.Pull(%s) unhandled error; stderr: %s", dir, stderrStr)
-				c <- &PullUpdate{Status: PullFailed, Message: err.Error()}
 			}
+			c <- update
 		}
 		close(c)
 	}()
@@ -183,7 +155,7 @@ const (
 	pullDivergentBranchesMsg        = "divergent branches (require a merge or rebase)"
 	pullMergeConflictErr            = "Your local changes to the following files would be overwritten by merge:"
 	pullMergeConflictMsg            = "merge conflict"
-	pullRebaseConflictErr           = "CONFLICT"
+	pullRebaseConflictErr           = "Resolve all conflicts manually, mark them as resolved with"
 	pullRebaseConflictMsg           = "merge conflict (don't worry, rebase was aborted)"
 	pullRemoteBranchNotFoundErr     = "from the remote, but no such ref was fetched."
 	pullRemoteBranchNotFoundMsg     = "tracking branch not found on remote"
@@ -199,6 +171,48 @@ const (
 	pullCouldNotResolveHostErr      = "Could not resolve host: "
 	pullCouldNotResolveHostMsg      = "could not resolve host"
 )
+
+func makePullErrorUpdate(stderr string) *PullUpdate {
+	if strings.Contains(stderr, pullConnectionFailureErr) {
+		errI := strings.Index(stderr, pullConnectionFailureErr)
+		if errI == 0 {
+			return &PullUpdate{Status: ConnectionFailure, Message: pullConnectionFailureMsg}
+		} else {
+			substrEnd := errI - 1
+			if stderr[substrEnd-1] == '.' {
+				substrEnd--
+			}
+			message := stderr[0:substrEnd]
+			if message == pullGitHubRepositoryNotFoundErr {
+				return &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
+			} else {
+				return &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
+			}
+		}
+	} else if strings.Contains(stderr, pullMergeConflictErr) {
+		return &PullUpdate{Status: MergeConflict, Message: pullMergeConflictMsg}
+	} else if strings.Contains(stderr, pullRebaseConflictErr) {
+		return &PullUpdate{Status: MergeConflict, Message: pullRebaseConflictMsg}
+	} else if strings.Contains(stderr, pullDivergentBranchesErr) {
+		return &PullUpdate{Status: DivergentBranches, Message: pullDivergentBranchesMsg}
+	} else if strings.Contains(stderr, pullDetachedHeadErr) {
+		return &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
+	} else if strings.Contains(stderr, pullRemoteBranchNotFoundErr) {
+		return &PullUpdate{Status: RemoteBranchNotFound, Message: pullRemoteBranchNotFoundMsg}
+	} else if strings.Contains(stderr, pullUnstagedChangesErr) {
+		return &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
+	} else if strings.Contains(stderr, pullUnsetUpstreamErr) {
+		return &PullUpdate{Status: UnsetUpstream, Message: pullUnsetUpstreamMsg}
+	} else if strings.Contains(stderr, pullCouldNotResolveHostErr) {
+		return &PullUpdate{Status: CouldNotResolveHost, Message: pullCouldNotResolveHostMsg}
+	} else if strings.Index(stderr, pullNotRepositoryErr) == 0 {
+		return &PullUpdate{Status: NotRepository, Message: pullNotRepositoryMsg}
+	} else if strings.Index(stderr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderr, pullRepositoryNotFoundErrPost) != -1 {
+		return &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
+	} else {
+		return nil
+	}
+}
 
 func RebaseAbort(dir string) error {
 	gitPullCmd := exec.Command("git", "rebase", "--abort")
