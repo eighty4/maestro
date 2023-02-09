@@ -56,12 +56,18 @@ func TestClone_IntoNewDir(t *testing.T) {
 	testCloneChannel(t, c, Cloned, "")
 }
 
-func TestClone_Fails_WithAuthFailed(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const cloneAuthRequired = `
 Cloning into 'asdf'...
 fatal: could not read Username for 'https://github.com': terminal prompts disabled`
 
+func TestMakeCloneErrorUpdate_ForAuthRequired(t *testing.T) {
+	u := makeCloneErrorUpdate(cloneAuthRequired[1:])
+	assert.Equal(t, AuthRequired, u.Status)
+	assert.Equal(t, "authentication required", u.Message)
+}
+
+func TestClone_Fails_WithAuthFailed(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -69,13 +75,19 @@ fatal: could not read Username for 'https://github.com': terminal prompts disabl
 	testCloneChannel(t, c, AuthRequired, "authentication required")
 }
 
-func TestClone_Fails_WithBadRedirect(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const cloneBadRedirect = `
 fatal: unable to update url base from redirection:
   asked for: https://yahoo.com/info/refs?service=git-upload-pack
    redirect: https://www.yahoo.com/`
 
+func TestMakeCloneErrorUpdate_ForBadRedirect(t *testing.T) {
+	u := makeCloneErrorUpdate(cloneBadRedirect[1:])
+	assert.Equal(t, BadRedirect, u.Status)
+	assert.Equal(t, "following http redirect did not connect to a git repository", u.Message)
+}
+
+func TestClone_Fails_WithBadRedirect(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -83,12 +95,18 @@ fatal: unable to update url base from redirection:
 	testCloneChannel(t, c, BadRedirect, "following http redirect did not connect to a git repository")
 }
 
-func TestClone_Fails_WithNotFound(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const cloneNotFound = `
 remote: Not Found
 fatal: repository 'https://github.com/asdgsadgasdgasgasdg/' not found`
 
+func TestMakeCloneErrorUpdate_ForRepoNotFound(t *testing.T) {
+	u := makeCloneErrorUpdate(cloneNotFound[1:])
+	assert.Equal(t, CloneRepoNotFound, u.Status)
+	assert.Equal(t, "repository not found", u.Message)
+}
+
+func TestClone_Fails_WithNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -146,15 +164,22 @@ fatal: not a git repository (or any of the parent directories): .git`
 	testPullChannel(t, Pull(dir), NotRepository, "not a repository", nil)
 }
 
-func TestPull_Fails_WithDetachedHead(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullDetachedHead = `
 You are not currently on a branch.
 Please specify which branch you want to merge with.
 See git-pull(1) for details.
 
     git pull <remote> <branch>`
 
+func TestMakePullErrorUpdate_ForDetachedHead(t *testing.T) {
+	u := makePullErrorUpdate(pullDetachedHead[1:])
+	assert.Equal(t, DetachedHead, u.Status)
+	assert.Equal(t, "detached from a branch", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithDetachedHead(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -163,9 +188,7 @@ See git-pull(1) for details.
 	testPullChannel(t, Pull(dir), DetachedHead, "detached from a branch", nil)
 }
 
-func TestPull_Fails_WithDivergentBranches(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullDivergentBranches = `
 hint: You have divergent branches and need to specify how to reconcile them.
 hint: You can do so by running one of the following commands sometime before
 hint: your next pull:
@@ -180,6 +203,15 @@ hint: or --ff-only on the command line to override the configured default per
 hint: invocation.
 fatal: Need to specify how to reconcile divergent branches.`
 
+func TestMakePullErrorUpdate_ForDivergentBranches(t *testing.T) {
+	u := makePullErrorUpdate(pullDivergentBranches[1:])
+	assert.Equal(t, DivergentBranches, u.Status)
+	assert.Equal(t, "divergent branches (require a merge or rebase)", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithDivergentBranches(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -189,14 +221,21 @@ fatal: Need to specify how to reconcile divergent branches.`
 	testPullChannel(t, Pull(dir), DivergentBranches, "divergent branches (require a merge or rebase)", nil)
 }
 
-func TestPull_Fails_WithMergeConflict_WhenMerging(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullMergeConflict = `
 error: Your local changes to the following files would be overwritten by merge:
 	README.md
 Please commit your changes or stash them before you merge.
 Aborting`
 
+func TestMakePullErrorUpdate_ForMergeConflict(t *testing.T) {
+	u := makePullErrorUpdate(pullMergeConflict[1:])
+	assert.Equal(t, MergeConflict, u.Status)
+	assert.Equal(t, "merge conflict", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithMergeConflict_WhenMerging(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -210,16 +249,23 @@ Aborting`
 	testPullChannel(t, Pull(dir), MergeConflict, "merge conflict", nil)
 }
 
-func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
-	gitIntegrationTest(t)
-	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
-	_ = `
+const pullRebaseConflict = `
 error: could not apply f4d2207... "README.md"
 hint: Resolve all conflicts manually, mark them as resolved with
 hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
 hint: You can instead skip this commit: run "git rebase --skip".
 hint: To abort and get back to the state before "git rebase", run "git rebase --abort".`
 
+func TestMakePullErrorUpdate_ForRebaseConflict(t *testing.T) {
+	u := makePullErrorUpdate(pullRebaseConflict[1:])
+	assert.Equal(t, MergeConflict, u.Status)
+	assert.Equal(t, "merge conflict (don't worry, rebase was aborted)", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
+	gitIntegrationTest(t)
+	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -244,14 +290,21 @@ hint: To abort and get back to the state before "git rebase", run "git rebase --
 	}
 }
 
-func TestPull_Fails_WithConnectionFailure_WithoutFailureReason(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullConnectionFailure = `
 fatal: Could not read from remote repository.
 
 Please make sure you have the correct access rights
 and the repository exists.`
 
+func TestMakePullErrorUpdate_ForConnectionFailure(t *testing.T) {
+	u := makePullErrorUpdate(pullConnectionFailure[1:])
+	assert.Equal(t, ConnectionFailure, u.Status)
+	assert.Equal(t, "connection failure with remote repository", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithConnectionFailure_WithoutFailureReason(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -265,18 +318,25 @@ and the repository exists.`
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
-func TestPull_Fails_WithConnectionFailure_WithFailureReason(t *testing.T) {
-	gitIntegrationTest(t)
-	if runtime.GOOS != "darwin" {
-		t.Skip("does not match sleep output on linux")
-	}
-	_ = `
+const pullConnectionFailureWithReason = `
 exit 1: line 0: exit: too many arguments
 fatal: Could not read from remote repository.
 
 Please make sure you have the correct access rights
 and the repository exists.`
 
+func TestMakePullErrorUpdate_ForConnectionFailureWithReason(t *testing.T) {
+	u := makePullErrorUpdate(pullConnectionFailureWithReason[1:])
+	assert.Equal(t, ConnectionFailure, u.Status)
+	assert.Equal(t, "\"exit 1: line 0: exit: too many arguments\"", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithConnectionFailure_WithFailureReason(t *testing.T) {
+	gitIntegrationTest(t)
+	if runtime.GOOS != "darwin" {
+		t.Skip("output does not match on linux")
+	}
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -290,16 +350,23 @@ and the repository exists.`
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
-func TestPull_Fails_WithGitHubRepoNotFoundConnectionError_MappedToRepositoryNotFound(t *testing.T) {
-	gitIntegrationTest(t)
-	t.Skip("unable to run on CI because it requires SSH auth to GitHub")
-	_ = `
+const pullGitHubNotFound = `
 ERROR: Repository not found.
 fatal: Could not read from remote repository.
 
 Please make sure you have the correct access rights
 and the repository exists.`
 
+func TestMakePullErrorUpdate_ForGitHubNotFound(t *testing.T) {
+	u := makePullErrorUpdate(pullGitHubNotFound[1:])
+	assert.Equal(t, PullRepoNotFound, u.Status)
+	assert.Equal(t, "repository not found", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithGitHubRepoNotFoundConnectionError_MappedToRepositoryNotFound(t *testing.T) {
+	gitIntegrationTest(t)
+	t.Skip("unable to run on CI because it requires SSH auth to GitHub")
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -308,12 +375,19 @@ and the repository exists.`
 	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil)
 }
 
+const pullCouldNotResolveHost = `
+fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve host: github.com`
+
+func TestMakePullErrorUpdate_ForCouldNotResolveHost(t *testing.T) {
+	u := makePullErrorUpdate(pullCouldNotResolveHost[1:])
+	assert.Equal(t, CouldNotResolveHost, u.Status)
+	assert.Equal(t, "could not resolve host", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
 func TestPull_Fails_WithCouldNotResolveHost(t *testing.T) {
 	gitIntegrationTest(t)
 	t.Skip("must disconnect from WiFi/ethernet between clone and pull or use namespace to deny network")
-	_ = `
-fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve host: github.com`
-
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://gibhub.com/eighty4/sse")
@@ -321,12 +395,19 @@ fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve hos
 	testPullChannel(t, Pull(dir), CouldNotResolveHost, "could not resolve host", nil)
 }
 
-func TestPull_Fails_WithRemoteBranchNotFound(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullRemoteBranchNotFound = `
 Your configuration specifies to merge with the ref 'refs/heads/macrame'
 from the remote, but no such ref was fetched.`
 
+func TestMakePullErrorUpdate_ForRemoteBranchNotFound(t *testing.T) {
+	u := makePullErrorUpdate(pullRemoteBranchNotFound[1:])
+	assert.Equal(t, RemoteBranchNotFound, u.Status)
+	assert.Equal(t, "tracking branch not found on remote", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithRemoteBranchNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -342,9 +423,7 @@ from the remote, but no such ref was fetched.`
 	testPullChannel(t, Pull(dir), RemoteBranchNotFound, "tracking branch not found on remote", nil)
 }
 
-func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullUnsetUpstream = `
 Initialized empty Git repository in /private/var/folders/r6/0hg_xym96qbgc8m049hxjrxr0000gn/T/maestro-test2377015730/.git/
 There is no tracking information for the current branch.
 Please specify which branch you want to merge with.
@@ -356,6 +435,15 @@ If you wish to set tracking information for this branch you can do so with:
 
     git branch --set-upstream-to=<remote>/<branch> main`
 
+func TestMakePullErrorUpdate_ForUnsetUpstream(t *testing.T) {
+	u := makePullErrorUpdate(pullUnsetUpstream[1:])
+	assert.Equal(t, UnsetUpstream, u.Status)
+	assert.Equal(t, "not tracking an upstream remote", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.InitRepo(t, dir)
@@ -363,13 +451,20 @@ If you wish to set tracking information for this branch you can do so with:
 	testPullChannel(t, Pull(dir), UnsetUpstream, "not tracking an upstream remote", nil)
 }
 
-func TestPull_Fails_WithUnstagedChanges(t *testing.T) {
-	gitIntegrationTest(t)
-	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
-	_ = `
+const pullUnstagedChanges = `
 error: cannot pull with rebase: You have unstaged changes.
 error: please commit or stash them.`
 
+func TestMakePullErrorUpdate_ForUnstagedChanges(t *testing.T) {
+	u := makePullErrorUpdate(pullUnstagedChanges[1:])
+	assert.Equal(t, UnstagedChanges, u.Status)
+	assert.Equal(t, "unstaged changes", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithUnstagedChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -382,11 +477,18 @@ error: please commit or stash them.`
 	testPullChannel(t, Pull(dir), UnstagedChanges, "unstaged changes", nil)
 }
 
-func TestPull_Fails_WithRepositoryNotFound(t *testing.T) {
-	gitIntegrationTest(t)
-	_ = `
+const pullRepositoryNotFound = `
 fatal: repository 'https://eighty4.io/' not found`
 
+func TestMakePullErrorUpdate_ForRepositoryNotFound(t *testing.T) {
+	u := makePullErrorUpdate(pullRepositoryNotFound[1:])
+	assert.Equal(t, PullRepoNotFound, u.Status)
+	assert.Equal(t, "repository not found", u.Message)
+	assert.Nil(t, u.RepoState)
+}
+
+func TestPull_Fails_WithRepositoryNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
