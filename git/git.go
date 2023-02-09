@@ -14,9 +14,12 @@ import (
 type CloneStatus string
 
 const (
-	Cloning     CloneStatus = "Cloning"
-	Cloned      CloneStatus = "Cloned"
-	CloneFailed CloneStatus = "CloneFailed"
+	Cloning           CloneStatus = "Cloning"
+	Cloned            CloneStatus = "Cloned"
+	BadRedirect       CloneStatus = "BadRedirect"
+	CloneRepoNotFound CloneStatus = "RepositoryNotFound"
+	AuthRequired      CloneStatus = "AuthRequired"
+	CloneFailed       CloneStatus = "CloneFailed"
 )
 
 type CloneUpdate struct {
@@ -34,7 +37,7 @@ const (
 	MergeConflict        PullStatus = "MergeConflict"
 	DetachedHead         PullStatus = "DetachedHead"
 	DivergentBranches    PullStatus = "DivergentBranches"
-	RepositoryNotFound   PullStatus = "RepositoryNotFound"
+	PullRepoNotFound     PullStatus = "RepositoryNotFound"
 	RemoteBranchNotFound PullStatus = "RemoteBranchNotFound"
 	UnsetUpstream        PullStatus = "UnsetUpstream"
 	UnstagedChanges      PullStatus = "UnstagedChanges"
@@ -59,6 +62,7 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 	go func() {
 		c <- &CloneUpdate{Status: Cloning}
 		gitCloneCmd := exec.Command("git", "clone", url, dir)
+		gitCloneCmd.Env = []string{"GIT_TERMINAL_PROMPT=0"}
 		var stderr bytes.Buffer
 		gitCloneCmd.Stdout = nil
 		gitCloneCmd.Stderr = &stderr
@@ -67,8 +71,14 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 			c <- &CloneUpdate{Status: Cloned}
 		} else {
 			stderrStr := stderr.String()
-			if strings.Contains(stderrStr, cloneRepoNotFoundErr) {
-				c <- &CloneUpdate{Status: CloneFailed, Message: cloneRepoNotFoundMsg}
+			if strings.Contains(stderrStr, cloneConnectionFailureErr) {
+				c <- &CloneUpdate{Status: CloneFailed, Message: cloneConnectionFailureMsg}
+			} else if strings.Contains(stderrStr, cloneAuthFailedErr) {
+				c <- &CloneUpdate{Status: AuthRequired, Message: cloneAuthFailedMsg}
+			} else if strings.Contains(stderrStr, cloneRepoNotFoundErr) {
+				c <- &CloneUpdate{Status: CloneRepoNotFound, Message: cloneRepoNotFoundMsg}
+			} else if strings.Contains(stderrStr, cloneBadRequestErr) {
+				c <- &CloneUpdate{Status: BadRedirect, Message: cloneBadRequestMsg}
 			} else {
 				log.Printf("[ERROR] git.Clone(%s, %s) unhandled error; stderr: %s", dir, url, stderrStr)
 				c <- &CloneUpdate{Status: CloneFailed, Message: err.Error()}
@@ -80,8 +90,14 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 }
 
 const (
-	cloneRepoNotFoundErr = "ERROR: Repository not found"
-	cloneRepoNotFoundMsg = "repository not found"
+	cloneConnectionFailureErr = "fatal: Could not read from remote repository."
+	cloneConnectionFailureMsg = "connection failure with remote repository"
+	cloneRepoNotFoundErr      = "not found"
+	cloneRepoNotFoundMsg      = "repository not found"
+	cloneAuthFailedErr        = "fatal: could not read Username for"
+	cloneAuthFailedMsg        = "authentication required"
+	cloneBadRequestErr        = "fatal: unable to update url base from redirection:"
+	cloneBadRequestMsg        = "following http redirect did not connect to a git repository"
 )
 
 func Pull(dir string) <-chan *PullUpdate {
@@ -121,7 +137,7 @@ func Pull(dir string) <-chan *PullUpdate {
 					}
 					message := stderrStr[0:substrEnd]
 					if message == pullGitHubRepositoryNotFoundErr {
-						c <- &PullUpdate{Status: RepositoryNotFound, Message: pullRepositoryNotFoundMsg}
+						c <- &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
 					} else {
 						c <- &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
 					}
@@ -146,7 +162,7 @@ func Pull(dir string) <-chan *PullUpdate {
 			} else if strings.Index(stderrStr, pullNotRepositoryErr) == 0 {
 				c <- &PullUpdate{Status: NotRepository, Message: pullNotRepositoryMsg}
 			} else if strings.Index(stderrStr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderrStr, pullRepositoryNotFoundErrPost) != -1 {
-				c <- &PullUpdate{Status: RepositoryNotFound, Message: pullRepositoryNotFoundMsg}
+				c <- &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
 			} else {
 				log.Printf("[ERROR] git.Pull(%s) unhandled error; stderr: %s", dir, stderrStr)
 				c <- &PullUpdate{Status: PullFailed, Message: err.Error()}

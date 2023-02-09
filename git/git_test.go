@@ -18,6 +18,12 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func gitIntegrationTest(t *testing.T) {
+	//if os.Getenv("MAESTRO_GIT_TESTING") != "true" {
+	//	t.Skip("set MAESTRO_GIT_TESTING=true to run integration tests")
+	//}
+}
+
 func testCloneChannel(t *testing.T, c <-chan *CloneUpdate, expStatus CloneStatus, expMessage string) {
 	u, ok := <-c
 	assert.True(t, ok)
@@ -32,7 +38,8 @@ func testCloneChannel(t *testing.T, c <-chan *CloneUpdate, expStatus CloneStatus
 	assert.Nil(t, u)
 }
 
-func TestClone_DirExists(t *testing.T) {
+func TestClone_IntoExistingDir(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -40,7 +47,8 @@ func TestClone_DirExists(t *testing.T) {
 	testCloneChannel(t, c, Cloned, "")
 }
 
-func TestClone_DirDoesNotExist(t *testing.T) {
+func TestClone_IntoNewDir(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -48,12 +56,44 @@ func TestClone_DirDoesNotExist(t *testing.T) {
 	testCloneChannel(t, c, Cloned, "")
 }
 
-func TestClone_Fails(t *testing.T) {
+func TestClone_Fails_WithAuthFailed(t *testing.T) {
+	gitIntegrationTest(t)
+	_ = `
+Cloning into 'asdf'...
+fatal: could not read Username for 'https://github.com': terminal prompts disabled`
+
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	c := Clone(dir, "https://github.com/eighty4/asdf")
+	testCloneChannel(t, c, AuthRequired, "authentication required")
+}
+
+func TestClone_Fails_WithBadRedirect(t *testing.T) {
+	gitIntegrationTest(t)
+	_ = `
+fatal: unable to update url base from redirection:
+  asked for: https://yahoo.com/info/refs?service=git-upload-pack
+   redirect: https://www.yahoo.com/`
+
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
 	c := Clone(dir, "https://yahoo.com")
-	testCloneChannel(t, c, CloneFailed, "exit status 128")
+	testCloneChannel(t, c, BadRedirect, "following http redirect did not connect to a git repository")
+}
+
+func TestClone_Fails_WithNotFound(t *testing.T) {
+	gitIntegrationTest(t)
+	_ = `
+remote: Not Found
+fatal: repository 'https://github.com/asdgsadgasdgasgasdg/' not found`
+
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	c := Clone(dir, "https://github.com/asdgsadgasdgasgasdg")
+	testCloneChannel(t, c, CloneRepoNotFound, "repository not found")
 }
 
 func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, expMessage string, expRepoState *RepoState) {
@@ -76,6 +116,7 @@ func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, e
 }
 
 func TestPull(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -85,6 +126,7 @@ func TestPull(t *testing.T) {
 }
 
 func TestPull_WithLocalCommits(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
@@ -94,6 +136,7 @@ func TestPull_WithLocalCommits(t *testing.T) {
 }
 
 func TestPull_Fails_DirNotRepo(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 fatal: not a git repository (or any of the parent directories): .git`
 
@@ -104,6 +147,7 @@ fatal: not a git repository (or any of the parent directories): .git`
 }
 
 func TestPull_Fails_WithDetachedHead(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 You are not currently on a branch.
 Please specify which branch you want to merge with.
@@ -120,6 +164,7 @@ See git-pull(1) for details.
 }
 
 func TestPull_Fails_WithDivergentBranches(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 hint: You have divergent branches and need to specify how to reconcile them.
 hint: You can do so by running one of the following commands sometime before
@@ -145,6 +190,7 @@ fatal: Need to specify how to reconcile divergent branches.`
 }
 
 func TestPull_Fails_WithMergeConflict_WhenMerging(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 error: Your local changes to the following files would be overwritten by merge:
 	README.md
@@ -165,6 +211,7 @@ Aborting`
 }
 
 func TestPull_Fails_WithMergeConflict_WhenRebasing(t *testing.T) {
+	gitIntegrationTest(t)
 	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	_ = `
 error: could not apply f4d2207... "README.md"
@@ -198,6 +245,7 @@ hint: To abort and get back to the state before "git rebase", run "git rebase --
 }
 
 func TestPull_Fails_WithConnectionFailure_WithoutFailureReason(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 fatal: Could not read from remote repository.
 
@@ -218,6 +266,7 @@ and the repository exists.`
 }
 
 func TestPull_Fails_WithConnectionFailure_WithFailureReason(t *testing.T) {
+	gitIntegrationTest(t)
 	if runtime.GOOS != "darwin" {
 		t.Skip("does not match sleep output on linux")
 	}
@@ -242,6 +291,7 @@ and the repository exists.`
 }
 
 func TestPull_Fails_WithGitHubRepoNotFoundConnectionError_MappedToRepositoryNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	t.Skip("unable to run on CI because it requires SSH auth to GitHub")
 	_ = `
 ERROR: Repository not found.
@@ -255,10 +305,11 @@ and the repository exists.`
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.SetGitRemoteOriginUrl(t, dir, "git@github.com:eighty4/aaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	testPullChannel(t, Pull(dir), RepositoryNotFound, "repository not found", nil)
+	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil)
 }
 
 func TestPull_Fails_WithCouldNotResolveHost(t *testing.T) {
+	gitIntegrationTest(t)
 	t.Skip("must disconnect from WiFi/ethernet between clone and pull or use namespace to deny network")
 	_ = `
 fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve host: github.com`
@@ -271,6 +322,7 @@ fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve hos
 }
 
 func TestPull_Fails_WithRemoteBranchNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 Your configuration specifies to merge with the ref 'refs/heads/macrame'
 from the remote, but no such ref was fetched.`
@@ -291,6 +343,7 @@ from the remote, but no such ref was fetched.`
 }
 
 func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 Initialized empty Git repository in /private/var/folders/r6/0hg_xym96qbgc8m049hxjrxr0000gn/T/maestro-test2377015730/.git/
 There is no tracking information for the current branch.
@@ -311,6 +364,7 @@ If you wish to set tracking information for this branch you can do so with:
 }
 
 func TestPull_Fails_WithUnstagedChanges(t *testing.T) {
+	gitIntegrationTest(t)
 	t.Skip("this scenario requires parameterizing `git pull` with `--rebase`")
 	_ = `
 error: cannot pull with rebase: You have unstaged changes.
@@ -329,6 +383,7 @@ error: please commit or stash them.`
 }
 
 func TestPull_Fails_WithRepositoryNotFound(t *testing.T) {
+	gitIntegrationTest(t)
 	_ = `
 fatal: repository 'https://eighty4.io/' not found`
 
@@ -337,7 +392,7 @@ fatal: repository 'https://eighty4.io/' not found`
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.SetGitRemoteOriginUrl(t, dir, "https://eighty4.io")
 
-	testPullChannel(t, Pull(dir), RepositoryNotFound, "repository not found", nil)
+	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil)
 }
 
 func TestRevParseShowTopLevel_NotRepo(t *testing.T) {
