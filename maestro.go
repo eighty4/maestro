@@ -40,6 +40,8 @@ func gitSync(cfg *Config) {
 		repositories = cfg.Repositories
 	}
 	ws := git.NewWorkspace(util.Cwd(), repositories, 2)
+
+	// calc max len of a repo name for print formatting
 	maxNameLen := 0
 	for _, repo := range ws.Repositories {
 		nameLen := len(repo.Name)
@@ -49,6 +51,7 @@ func gitSync(cfg *Config) {
 	}
 
 	up := NewUnicodePrinting()
+	// escapes %% to % so given maxNameLen == 3, fmtStr := "  %3s %s\n"
 	fmtStr := fmt.Sprintf("  %%%ds %%s %%s\n", maxNameLen)
 
 	printStatusUpdate := func(s *git.SyncUpdate) {
@@ -67,14 +70,14 @@ func gitSync(cfg *Config) {
 		fmt.Printf(fmtStr, s.Repo, checkOrX, s.Message)
 	}
 
-	println(fmt.Sprintf("Updating %d repositories", len(ws.Repositories)))
+	println(fmt.Sprintf("Syncing %d repositories", len(ws.Repositories)))
 	c := ws.Sync()
 	for {
 		update, ok := <-c
 		if ok {
 			printStatusUpdate(update)
 		} else {
-			println("Finished!")
+			println("Done!")
 			break
 		}
 	}
