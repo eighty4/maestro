@@ -25,6 +25,8 @@ jobs:
         run: go build
       - name: test
         run: go list -f '{{.Dir}}' -m | xargs go test
+        env:
+          MAESTRO_CI: true
       - name: tidy maestro
         run: go mod tidy
       - name: tidy composable

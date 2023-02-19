@@ -30,19 +30,19 @@ type CloneUpdate struct {
 type PullStatus string
 
 const (
-	Pulling              PullStatus = "Pulling"
-	Pulled               PullStatus = "Pulled"
-	CouldNotResolveHost  PullStatus = "CouldNotResolveHost"
-	ConnectionFailure    PullStatus = "ConnectionFailure"
-	MergeConflict        PullStatus = "MergeConflict"
-	DetachedHead         PullStatus = "DetachedHead"
-	DivergentBranches    PullStatus = "DivergentBranches"
-	PullRepoNotFound     PullStatus = "RepositoryNotFound"
-	RemoteBranchNotFound PullStatus = "RemoteBranchNotFound"
-	UnsetUpstream        PullStatus = "UnsetUpstream"
-	UnstagedChanges      PullStatus = "UnstagedChanges"
-	NotRepository        PullStatus = "NotRepository"
-	PullFailed           PullStatus = "PullFailed"
+	Pulling                PullStatus = "Pulling"
+	Pulled                 PullStatus = "Pulled"
+	CouldNotResolveHost    PullStatus = "CouldNotResolveHost"
+	ConnectionFailure      PullStatus = "ConnectionFailure"
+	OverwritesLocalChanges PullStatus = "OverwritesLocalChanges"
+	MergeConflict          PullStatus = "MergeConflict"
+	DetachedHead           PullStatus = "DetachedHead"
+	PullRepoNotFound       PullStatus = "RepositoryNotFound"
+	RemoteBranchNotFound   PullStatus = "RemoteBranchNotFound"
+	UnsetUpstream          PullStatus = "UnsetUpstream"
+	UnstagedChanges        PullStatus = "UnstagedChanges"
+	NotRepository          PullStatus = "NotRepository"
+	PullFailed             PullStatus = "PullFailed"
 )
 
 type PullUpdate struct {
@@ -62,6 +62,7 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 	go func() {
 		c <- &CloneUpdate{Status: Cloning}
 		gitCloneCmd := exec.Command("git", "clone", url, dir)
+		// GIT_TERMINAL_PROMPT=0 prevents stdin prompting for http auth credentials
 		gitCloneCmd.Env = []string{"GIT_TERMINAL_PROMPT=0"}
 		var stderr bytes.Buffer
 		gitCloneCmd.Stdout = nil
@@ -108,11 +109,10 @@ func makeCloneErrorUpdate(stderr string) *CloneUpdate {
 }
 
 func Pull(dir string) <-chan *PullUpdate {
-	// todo parameterize with Default, Merge, Rebase and FF-only behaviors
 	c := make(chan *PullUpdate)
 	go func() {
 		c <- &PullUpdate{Status: Pulling}
-		gitPullCmd := exec.Command("git", "pull")
+		gitPullCmd := exec.Command("git", "pull", "--ff-only")
 		gitPullCmd.Dir = dir
 		var stdout bytes.Buffer
 		gitPullCmd.Stdout = &stdout
@@ -133,10 +133,8 @@ func Pull(dir string) <-chan *PullUpdate {
 		} else {
 			update := makePullErrorUpdate(stderr.String())
 			if update == nil {
-				log.Printf("[ERROR] git.Pull(%s) unhandled error; stderr: %s", dir, stderr.String())
+				log.Printf("[ERROR] git.Pull(%s) unhandled error\nstderr:\n==========\n%s\n==========\n", dir, stderr.String())
 				update = &PullUpdate{Status: PullFailed, Message: err.Error()}
-			} else if update.Status == MergeConflict {
-				_ = RebaseAbort(dir)
 			}
 			c <- update
 		}
@@ -146,30 +144,38 @@ func Pull(dir string) <-chan *PullUpdate {
 }
 
 const (
-	pullConnectionFailureErr        = "fatal: Could not read from remote repository."
-	pullConnectionFailureMsg        = "connection failure with remote repository"
+	pullConnectionFailureErr = "fatal: Could not read from remote repository."
+	pullConnectionFailureMsg = "connection failure with remote repository"
+
 	pullGitHubRepositoryNotFoundErr = "ERROR: Repository not found"
-	pullDetachedHeadErr             = "You are not currently on a branch."
-	pullDetachedHeadMsg             = "detached from a branch"
-	pullDivergentBranchesErr        = "You have divergent branches and need to specify how to reconcile them."
-	pullDivergentBranchesMsg        = "divergent branches (require a merge or rebase)"
-	pullMergeConflictErr            = "Your local changes to the following files would be overwritten by merge:"
-	pullMergeConflictMsg            = "merge conflict"
-	pullRebaseConflictErr           = "Resolve all conflicts manually, mark them as resolved with"
-	pullRebaseConflictMsg           = "merge conflict (don't worry, rebase was aborted)"
-	pullRemoteBranchNotFoundErr     = "from the remote, but no such ref was fetched."
-	pullRemoteBranchNotFoundMsg     = "tracking branch not found on remote"
-	pullUnstagedChangesErr          = "You have unstaged changes."
-	pullUnstagedChangesMsg          = "unstaged changes"
-	pullUnsetUpstreamErr            = "There is no tracking information for the current branch."
-	pullUnsetUpstreamMsg            = "not tracking an upstream remote"
-	pullRepositoryNotFoundErrPre    = "fatal: repository"
-	pullRepositoryNotFoundErrPost   = "not found"
-	pullRepositoryNotFoundMsg       = "repository not found"
-	pullNotRepositoryErr            = "fatal: not a git repository (or any of the parent directories): .git"
-	pullNotRepositoryMsg            = "not a repository"
-	pullCouldNotResolveHostErr      = "Could not resolve host: "
-	pullCouldNotResolveHostMsg      = "could not resolve host"
+
+	pullDetachedHeadErr = "You are not currently on a branch."
+	pullDetachedHeadMsg = "detached from a branch"
+
+	pullOverwritesLocalChangesErr = "Your local changes to the following files would be overwritten by merge:"
+	pullOverwritesLocalChangesMsg = "local changes would be overwritten"
+
+	pullMergeConflictErr = "fatal: Not possible to fast-forward, aborting."
+	pullMergeConflictMsg = "unable to pull without a merge or interactive rebase"
+
+	pullRemoteBranchNotFoundErr = "from the remote, but no such ref was fetched."
+	pullRemoteBranchNotFoundMsg = "tracking branch not found on remote"
+
+	pullUnstagedChangesErr = "You have unstaged changes."
+	pullUnstagedChangesMsg = "unstaged changes"
+
+	pullUnsetUpstreamErr = "There is no tracking information for the current branch."
+	pullUnsetUpstreamMsg = "not tracking an upstream remote"
+
+	pullRepositoryNotFoundErrPre  = "fatal: repository"
+	pullRepositoryNotFoundErrPost = "not found"
+	pullRepositoryNotFoundMsg     = "repository not found"
+
+	pullNotRepositoryErr = "fatal: not a git repository (or any of the parent directories): .git"
+	pullNotRepositoryMsg = "not a repository"
+
+	pullCouldNotResolveHostErr = "Could not resolve host: "
+	pullCouldNotResolveHostMsg = "could not resolve host"
 )
 
 func makePullErrorUpdate(stderr string) *PullUpdate {
@@ -189,12 +195,10 @@ func makePullErrorUpdate(stderr string) *PullUpdate {
 				return &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
 			}
 		}
+	} else if strings.Contains(stderr, pullOverwritesLocalChangesErr) {
+		return &PullUpdate{Status: OverwritesLocalChanges, Message: pullOverwritesLocalChangesMsg}
 	} else if strings.Contains(stderr, pullMergeConflictErr) {
 		return &PullUpdate{Status: MergeConflict, Message: pullMergeConflictMsg}
-	} else if strings.Contains(stderr, pullRebaseConflictErr) {
-		return &PullUpdate{Status: MergeConflict, Message: pullRebaseConflictMsg}
-	} else if strings.Contains(stderr, pullDivergentBranchesErr) {
-		return &PullUpdate{Status: DivergentBranches, Message: pullDivergentBranchesMsg}
 	} else if strings.Contains(stderr, pullDetachedHeadErr) {
 		return &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
 	} else if strings.Contains(stderr, pullRemoteBranchNotFoundErr) {
@@ -212,12 +216,6 @@ func makePullErrorUpdate(stderr string) *PullUpdate {
 	} else {
 		return nil
 	}
-}
-
-func RebaseAbort(dir string) error {
-	gitPullCmd := exec.Command("git", "rebase", "--abort")
-	gitPullCmd.Dir = dir
-	return gitPullCmd.Run()
 }
 
 // RevParseShowTopLevel returns absolute path of top level directory of Git repository.
