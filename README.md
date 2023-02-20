@@ -29,6 +29,6 @@ Maestro will sync a workspace of git repositories with the `maestro git` command
 directory and all subdirectories for git repositories and performs a `git pull --ff-only` in each repository.
 
 A `maestro.yaml` file allows repositories to be configured, enabling a `maestro git` command to also clone repositories
-not already present in the workspace. Eventually this feature could be used to enable an export->import of a dev
+not already present in the workspace. Eventually this feature could be used to enable an export/import workflow with a dev
 machine's workspaces before formatting or replacing hardware. Configuring a `maestro.yaml` example is
 [in the tests](config_test.go#L41).
