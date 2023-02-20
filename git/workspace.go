@@ -118,11 +118,11 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 						message := ""
 						status := SyncSuccess
 						if s.PulledCommits > 0 {
-							message = fmt.Sprintf("pulled %d commits", s.PulledCommits)
+							message = fmt.Sprintf("pulled %d %s", s.PulledCommits, util.PluralPrint("commit", s.PulledCommits))
 						}
 						if s.RepoState.LocalCommits > 0 {
 							status = SyncWarning
-							localCommitMessage := fmt.Sprintf("%d local commits", s.RepoState.LocalCommits)
+							localCommitMessage := fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits))
 							if message == "" {
 								message = localCommitMessage
 							} else {

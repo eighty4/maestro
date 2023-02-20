@@ -30,3 +30,11 @@ func IsDir(path string) bool {
 func Seconds(n int8) time.Duration {
 	return Duration(time.Second, n)
 }
+
+func PluralPrint(s string, n int) string {
+	if n == 1 {
+		return s
+	} else {
+		return s + "s"
+	}
+}
