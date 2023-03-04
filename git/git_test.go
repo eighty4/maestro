@@ -604,20 +604,20 @@ Fast-forward
  sse.go    | 1 +
  2 files changed, 4 insertions(+)
 `
-	from, to, err := parsePullCommitRange(gitPullStdout)
+	from, to, err := parsePulledCommitRange(gitPullStdout)
 	assert.Nil(t, err)
 	assert.Equal(t, "700148d", from)
 	assert.Equal(t, "7f04bd8", to)
 }
 
 func TestParsePullCommitRange_BadInput(t *testing.T) {
-	_, _, err := parsePullCommitRange("2\n")
+	_, _, err := parsePulledCommitRange("2\n")
 	assert.Equal(t, "failed to find commit hashes in git pull stdout", err.Error())
 }
 
 func TestParsePullCommitRange_GoodInput(t *testing.T) {
 	input := "Updating 0115386a..3456ecd9\nFast-forward\n"
-	from, to, err := parsePullCommitRange(input)
+	from, to, err := parsePulledCommitRange(input)
 	assert.Nil(t, err)
 	assert.Equal(t, "0115386a", from)
 	assert.Equal(t, "3456ecd9", to)
@@ -636,4 +636,54 @@ func TestParseRevListCommitCount_BadInput(t *testing.T) {
 
 func TestParseRevParseAbsolutePath_TrimsInput(t *testing.T) {
 	assert.Equal(t, "woo", parseRevParseAbsolutePath(" woo \n"))
+}
+
+func TestGetPulledCommitCount(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+
+	stdout := `Updating ea0888b..7f04bd8
+Fast-forward
+ README.md | 5 ++++-
+ sse.go    | 1 +
+ 2 files changed, 5 insertions(+), 1 deletion(-)`
+
+	count, err := getPulledCommitCount(dir, stdout)
+	assert.Nil(t, err)
+	assert.Equal(t, count, 3)
+}
+
+func TestGetPulledCommitCount_WhenAlreadyUpToDate(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	count, err := getPulledCommitCount(dir, "Already up to date.")
+	assert.Nil(t, err)
+	assert.Equal(t, count, 0)
+}
+
+func TestParsePulledCommitCount(t *testing.T) {
+	stdout := `Updating ea0888b..7f04bd8
+Fast-forward
+ README.md | 5 ++++-
+ sse.go    | 1 +
+ 2 files changed, 5 insertions(+), 1 deletion(-)`
+
+	from, to, err := parsePulledCommitRange(stdout)
+	assert.Nil(t, err)
+	assert.Equal(t, from, "ea0888b")
+	assert.Equal(t, to, "7f04bd8")
+}
+
+func TestRevListCommitCount(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+
+	count, err := RevListCommitCount(dir, "9a6992f988bee6e47540e53e434ad07911db3a30", "700148df1ec546c06ce1a54bc472fee3085a2842")
+	assert.Nil(t, err)
+	assert.Equal(t, count, 2)
 }

@@ -238,7 +238,6 @@ func RevParseShowTopLevel(dir string) (string, error) {
 }
 
 func RevListCommitCount(dir string, fromCommitHash string, toCommitHash string) (int, error) {
-	// todo test
 	cmtRange := fmt.Sprintf("%s..%s", fromCommitHash, toCommitHash)
 	gitCmtCountCmd := exec.Command("git", "rev-list", cmtRange, "--count")
 	gitCmtCountCmd.Dir = dir
@@ -321,18 +320,17 @@ func Status(dir string) (*RepoState, error) {
 }
 
 func getPulledCommitCount(dir string, gitPullStdout string) (int, error) {
-	// todo test
 	if strings.Index(gitPullStdout, "Updating") != 0 {
 		return 0, nil
 	}
-	from, to, err := parsePullCommitRange(gitPullStdout)
+	from, to, err := parsePulledCommitRange(gitPullStdout)
 	if err != nil {
 		return -1, err
 	}
 	return RevListCommitCount(dir, from, to)
 }
 
-func parsePullCommitRange(gitPullStdout string) (string, string, error) {
+func parsePulledCommitRange(gitPullStdout string) (string, string, error) {
 	regex, err := regexp.Compile(`Updating ([a-z\d]+)\.\.([a-z\d]+)`)
 	if err != nil {
 		return "", "", errors.New(fmt.Sprintf("err creating regex for git pull commit hashes (%s)", err.Error()))
