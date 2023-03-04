@@ -64,7 +64,6 @@ func NewWorkspace(rootDir string, repositories []*Repository, repoScanDepth int)
 // A git clone will be performed for any repositories configured within the Workspace that are not present on disk.
 // For Workspace repositories already cloned, the Sync operation will perform a git pull.
 func (w *Workspace) Sync() <-chan *SyncUpdate {
-	// todo test
 	var clone []*Repository
 	var pull []*Repository
 	c := make(chan *SyncUpdate)
@@ -93,7 +92,7 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 					case Cloned:
 						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncSuccess, Message: "cloned from " + repo.Git.Url}
 						break
-					case CloneFailed:
+					default:
 						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncFailure, Message: s.Message}
 						break
 					}

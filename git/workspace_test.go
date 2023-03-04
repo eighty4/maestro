@@ -48,6 +48,25 @@ func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
 	assert.Nil(t, update)
 }
 
+func TestWorkspace_Sync_ClonesRepo_Failure(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	repos := []*Repository{NewRepository("sse", path.Join(dir, "sse"), "https://github.com/asdgsadgasdgasgasdg")}
+	work := NewWorkspace(dir, repos, 0)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncFailure, update.Status)
+	assert.Equal(t, CloneSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "repository not found", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
+
 func TestWorkspace_Sync_PullsRepo_WithPulledCommits(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
@@ -93,6 +112,28 @@ func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
 	assert.Equal(t, "1 local commit, 1 staged change, 1 unstaged change, 1 untracked file", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
+
+func TestWorkspace_Sync_PullsRepo_Failure(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	repoDir := path.Join(dir, "sse")
+	testutil.MkDir(t, repoDir)
+	testutil.InitRepo(t, repoDir)
+
+	repos := []*Repository{NewRepository("sse", repoDir, "https://github.com/eighty4/sse")}
+	work := NewWorkspace(dir, repos, 0)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncFailure, update.Status)
+	assert.Equal(t, PullSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "not tracking an upstream remote", update.Message)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)
