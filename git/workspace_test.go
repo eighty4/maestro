@@ -29,6 +29,7 @@ func TestNewWorkspace_WithRepoScan(t *testing.T) {
 }
 
 func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
@@ -47,6 +48,7 @@ func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
 }
 
 func TestWorkspace_Sync_PullsRepo(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, path.Join(dir, "sse"), "https://github.com/eighty4/sse")

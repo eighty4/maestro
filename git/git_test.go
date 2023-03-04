@@ -19,7 +19,9 @@ func TestMain(m *testing.M) {
 }
 
 func gitIntegrationTest(t *testing.T) {
-	//t.Skip("skipping git integration tests")
+	if os.Getenv("MAESTRO_TEST_GIT") != "true" {
+		t.Skip("skipping git integration tests")
+	}
 }
 
 func skipOnCi(t *testing.T) {
@@ -499,6 +501,7 @@ func TestStatus_NoLocalCommits(t *testing.T) {
 }
 
 func TestStatus_WithLocalCommits(t *testing.T) {
+	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
