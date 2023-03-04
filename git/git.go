@@ -54,7 +54,10 @@ type PullUpdate struct {
 
 // RepoState holds data from `git status` and is available with git.Status.
 type RepoState struct {
-	LocalCommits int
+	LocalCommits    int
+	StagedChanges   int
+	UnstagedChanges int
+	UntrackedFiles  int
 }
 
 func Clone(dir string, url string) <-chan *CloneUpdate {
@@ -125,11 +128,11 @@ func Pull(dir string) <-chan *PullUpdate {
 			if err != nil {
 				log.Printf("[ERROR] git.Pull(%s) resolve pulled commit count error %s\n", dir, err.Error())
 			}
-			s, err := Status(dir)
+			repoState, err := Status(dir)
 			if err != nil {
 				log.Printf("[ERROR] git.Status(%s) error %s\n", dir, err.Error())
 			}
-			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: s}
+			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: repoState}
 		} else {
 			update := makePullErrorUpdate(stderr.String())
 			if update == nil {
@@ -266,18 +269,55 @@ func Status(dir string) (*RepoState, error) {
 	if err != nil {
 		return nil, err
 	}
-	secondLine := strings.Split(stdout.String(), "\n")[1]
-	matches := regex.FindStringSubmatch(secondLine)
+	localCommits := 0
+	stagedChanges := 0
+	unstagedChanges := 0
+	untrackedFiles := 0
+	lines := strings.Split(stdout.String(), "\n")
+	matches := regex.FindStringSubmatch(lines[1])
 	if len(matches) > 1 {
-		localCommits, err := strconv.Atoi(matches[1])
+		localCommits, err = strconv.Atoi(matches[1])
 		if err != nil {
 			return nil, err
-		} else {
-			return &RepoState{LocalCommits: localCommits}, nil
 		}
-	} else {
-		return &RepoState{LocalCommits: 0}, nil
 	}
+	var tracking string
+	for _, line := range lines {
+		if strings.Index(line, "Changes to be committed") == 0 {
+			tracking = "staged"
+		} else if strings.Index(line, "Changes not staged for commit") == 0 {
+			tracking = "unstaged"
+		} else if strings.Index(line, "Untracked files") == 0 {
+			tracking = "untracked"
+		} else if len(tracking) == 0 {
+			continue
+		} else if strings.Index(line, "  (use") == 0 {
+			continue
+		} else if len(strings.TrimSpace(line)) == 0 {
+			continue
+		} else if line[0] != '\t' {
+			continue
+		} else {
+			switch tracking {
+			case "staged":
+				stagedChanges++
+				break
+			case "unstaged":
+				unstagedChanges++
+				break
+			case "untracked":
+				untrackedFiles++
+				break
+			}
+		}
+	}
+	repoState := &RepoState{
+		LocalCommits:    localCommits,
+		StagedChanges:   stagedChanges,
+		UnstagedChanges: unstagedChanges,
+		UntrackedFiles:  untrackedFiles,
+	}
+	return repoState, nil
 }
 
 func getPulledCommitCount(dir string, gitPullStdout string) (int, error) {

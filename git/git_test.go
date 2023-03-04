@@ -511,6 +511,90 @@ func TestStatus_WithLocalCommits(t *testing.T) {
 	s, err := Status(dir)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, s.LocalCommits)
+	assert.Equal(t, 0, s.StagedChanges)
+	assert.Equal(t, 0, s.UnstagedChanges)
+	assert.Equal(t, 0, s.UntrackedFiles)
+}
+
+func TestStatus_WithStagedChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.OpenFileForOverwriting(t, dir, "LICENSE", func(f *os.File) {
+		_, _ = f.WriteString("license")
+	})
+	testutil.OpenFileForOverwriting(t, dir, "README.md", func(f *os.File) {
+		_, _ = f.WriteString("readme")
+	})
+	testutil.GitAdd(t, dir, "LICENSE")
+	testutil.GitAdd(t, dir, "README.md")
+
+	s, err := Status(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, s.LocalCommits)
+	assert.Equal(t, 2, s.StagedChanges)
+	assert.Equal(t, 0, s.UnstagedChanges)
+	assert.Equal(t, 0, s.UntrackedFiles)
+}
+
+func TestStatus_WithUnstagedChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.OpenFileForOverwriting(t, dir, "LICENSE", func(f *os.File) {
+		_, _ = f.WriteString("license")
+	})
+	testutil.OpenFileForOverwriting(t, dir, "README.md", func(f *os.File) {
+		_, _ = f.WriteString("readme")
+	})
+
+	s, err := Status(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, s.LocalCommits)
+	assert.Equal(t, 0, s.StagedChanges)
+	assert.Equal(t, 2, s.UnstagedChanges)
+	assert.Equal(t, 0, s.UntrackedFiles)
+}
+
+func TestStatus_WithUntrackedFiles(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.MkFile(t, dir, "new_file")
+	testutil.MkFile(t, dir, "another_new_file")
+
+	s, err := Status(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, s.LocalCommits)
+	assert.Equal(t, 0, s.StagedChanges)
+	assert.Equal(t, 0, s.UnstagedChanges)
+	assert.Equal(t, 2, s.UntrackedFiles)
+}
+
+func TestStatus_WithAllStateTypes(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.CommitNewFile(t, dir, "file1")
+	testutil.OpenFileForOverwriting(t, dir, "LICENSE", func(f *os.File) {
+		_, _ = f.WriteString("license")
+	})
+	testutil.OpenFileForOverwriting(t, dir, "README.md", func(f *os.File) {
+		_, _ = f.WriteString("readme")
+	})
+	testutil.GitAdd(t, dir, "README.md")
+	testutil.MkFile(t, dir, "new_file")
+
+	s, err := Status(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, s.LocalCommits)
+	assert.Equal(t, 1, s.StagedChanges)
+	assert.Equal(t, 1, s.UnstagedChanges)
+	assert.Equal(t, 1, s.UntrackedFiles)
 }
 
 func TestParsePullCommitRange(t *testing.T) {

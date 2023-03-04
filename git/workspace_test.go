@@ -3,6 +3,7 @@ package git
 import (
 	"github.com/eighty4/maestro/testutil"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"path"
 	"testing"
 )
@@ -47,11 +48,13 @@ func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
 	assert.Nil(t, update)
 }
 
-func TestWorkspace_Sync_PullsRepo(t *testing.T) {
+func TestWorkspace_Sync_PullsRepo_WithPulledCommits(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	testutil.CloneRepo(t, path.Join(dir, "sse"), "https://github.com/eighty4/sse")
+	repoDir := path.Join(dir, "sse")
+	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
+	testutil.ResetHard(t, repoDir, 2)
 
 	work := NewWorkspace(dir, []*Repository{}, 1)
 	c := work.Sync()
@@ -60,7 +63,36 @@ func TestWorkspace_Sync_PullsRepo(t *testing.T) {
 	assert.Equal(t, SyncSuccess, update.Status)
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
-	assert.Equal(t, "", update.Message)
+	assert.Equal(t, "pulled 2 commits", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
+
+func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	repoDir := path.Join(dir, "sse")
+	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
+	testutil.CommitNewFile(t, repoDir, "file1")
+	testutil.OpenFileForOverwriting(t, repoDir, "LICENSE", func(f *os.File) {
+		_, _ = f.WriteString("license")
+	})
+	testutil.OpenFileForOverwriting(t, repoDir, "README.md", func(f *os.File) {
+		_, _ = f.WriteString("readme")
+	})
+	testutil.GitAdd(t, repoDir, "README.md")
+	testutil.MkFile(t, repoDir, "new_file")
+
+	work := NewWorkspace(dir, []*Repository{}, 1)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncWarning, update.Status)
+	assert.Equal(t, PullSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "1 local commit, 1 staged change, 1 unstaged change, 1 untracked file", update.Message)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)

@@ -57,12 +57,16 @@ func ResetHard(t *testing.T, dir string, commits uint8) {
 	}
 }
 
-func AddAndCommit(t *testing.T, dir string, name string) {
+func GitAdd(t *testing.T, dir string, name string) {
 	gitAddCmd := exec.Command("git", "add", name)
 	gitAddCmd.Dir = dir
 	if err := gitAddCmd.Run(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func AddAndCommit(t *testing.T, dir string, name string) {
+	GitAdd(t, dir, name)
 	gitCommitCmd := exec.Command("git", "commit", "-m", fmt.Sprintf(`"%s"`, name))
 	gitCommitCmd.Dir = dir
 	var gitCommitCmdStderr bytes.Buffer

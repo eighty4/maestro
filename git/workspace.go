@@ -115,19 +115,30 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 					case Pulling:
 						continue
 					case Pulled:
-						message := ""
+						var messages []string
 						status := SyncSuccess
 						if s.PulledCommits > 0 {
-							message = fmt.Sprintf("pulled %d %s", s.PulledCommits, util.PluralPrint("commit", s.PulledCommits))
+							messages = append(messages, fmt.Sprintf("pulled %d %s", s.PulledCommits, util.PluralPrint("commit", s.PulledCommits)))
 						}
 						if s.RepoState.LocalCommits > 0 {
 							status = SyncWarning
-							localCommitMessage := fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits))
-							if message == "" {
-								message = localCommitMessage
-							} else {
-								strings.Join([]string{message, localCommitMessage}, ", ")
-							}
+							messages = append(messages, fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits)))
+						}
+						if s.RepoState.StagedChanges > 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d staged %s", s.RepoState.StagedChanges, util.PluralPrint("change", s.RepoState.StagedChanges)))
+						}
+						if s.RepoState.UnstagedChanges > 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d unstaged %s", s.RepoState.UnstagedChanges, util.PluralPrint("change", s.RepoState.UnstagedChanges)))
+						}
+						if s.RepoState.UntrackedFiles > 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d untracked %s", s.RepoState.UntrackedFiles, util.PluralPrint("file", s.RepoState.UntrackedFiles)))
+						}
+						var message string
+						if len(messages) > 0 {
+							message = strings.Join(messages, ", ")
 						}
 						c <- &SyncUpdate{Repo: repo.Name, Op: PullSync, Status: status, Message: message}
 						break
