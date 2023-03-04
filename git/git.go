@@ -180,19 +180,19 @@ const (
 
 func makePullErrorUpdate(stderr string) *PullUpdate {
 	if strings.Contains(stderr, pullConnectionFailureErr) {
-		errI := strings.Index(stderr, pullConnectionFailureErr)
-		if errI == 0 {
+		connectionFailureErrIndex := strings.Index(stderr, pullConnectionFailureErr)
+		if connectionFailureErrIndex == 0 {
 			return &PullUpdate{Status: ConnectionFailure, Message: pullConnectionFailureMsg}
 		} else {
-			substrEnd := errI - 1
-			if stderr[substrEnd-1] == '.' {
-				substrEnd--
+			connectionFailureCauseEndIndex := connectionFailureErrIndex - 1
+			if stderr[connectionFailureCauseEndIndex-1] == '.' {
+				connectionFailureCauseEndIndex--
 			}
-			message := stderr[0:substrEnd]
-			if message == pullGitHubRepositoryNotFoundErr {
+			connectionFailureCause := strings.TrimSpace(stderr[0:connectionFailureCauseEndIndex])
+			if connectionFailureCause == pullGitHubRepositoryNotFoundErr {
 				return &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
 			} else {
-				return &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, message)}
+				return &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, connectionFailureCause)}
 			}
 		}
 	} else if strings.Contains(stderr, pullOverwritesLocalChangesErr) {
