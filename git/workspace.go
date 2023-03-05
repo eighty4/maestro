@@ -53,7 +53,7 @@ func NewWorkspace(rootDir string, repositories []*Repository, repoScanDepth int)
 			reposAsMap[repo.Dir] = repo
 		}
 	}
-	log.Printf("[DEBUG] NewWorkspace with %d arg repos and %d scanned repos\n", len(repositories), len(scannedRepos))
+	log.Printf("[DEBUG] NewWorkspace with %d arg %s and %d scanned %s\n", len(repositories), util.PluralPrint("repo", len(repositories)), len(scannedRepos), util.PluralPrint("repo", len(scannedRepos)))
 	return &Workspace{
 		RootDir:      rootDir,
 		Repositories: reposAsMap,

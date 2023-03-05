@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"github.com/eighty4/maestro/util"
 	"log"
 	"os"
 	"os/exec"
@@ -64,7 +65,7 @@ func ScanForRepositories(dir string, repoScanDepth int) []*Repository {
 			case <-done:
 				close(c)
 				close(done)
-				log.Printf("[DEBUG] ScanForRepositories(\"%s\", %d) found %d repositories\n", dir, repoScanDepth, len(repositories))
+				log.Printf("[DEBUG] ScanForRepositories(\"%s\", %d) found %d %s\n", dir, repoScanDepth, len(repositories), util.SinglePrintIes("repositories", 1))
 				return repositories
 			}
 		}
@@ -82,7 +83,7 @@ func subdirectories(dir string) ([]string, error) {
 				result = append(result, file.Name())
 			}
 		}
-		log.Printf("[TRACE] subdirectories(%s) found %d dirs\n", dir, len(result))
+		log.Printf("[TRACE] subdirectories(%s) found %d %s\n", dir, len(result), util.PluralPrint("dir", len(result)))
 		return result, nil
 	}
 }
