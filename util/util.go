@@ -38,3 +38,11 @@ func PluralPrint(s string, n int) string {
 		return s + "s"
 	}
 }
+
+func SinglePrintIes(s string, n int) string {
+	if n == 1 {
+		return s[:len(s)-3] + "y"
+	} else {
+		return s
+	}
+}

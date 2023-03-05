@@ -23,7 +23,7 @@ func main() {
 	}
 
 	if util.IsDebug() && cfg != nil {
-		log.Printf("%s has %d repositories", cfg.Filename, len(cfg.Repositories))
+		log.Printf("%s has %d %s", cfg.Filename, len(cfg.Repositories), util.SinglePrintIes("repositories", len(cfg.Repositories)))
 	}
 
 	if len(os.Args) > 1 && os.Args[1] == "git" {
@@ -40,6 +40,11 @@ func gitSync(cfg *Config) {
 		repositories = cfg.Repositories
 	}
 	ws := git.NewWorkspace(util.Cwd(), repositories, 2)
+
+	if len(ws.Repositories) == 0 {
+		fmt.Println("No repositories found in this directory to sync.")
+		os.Exit(1)
+	}
 
 	// calc max len of a repo name for print formatting
 	maxNameLen := 0
