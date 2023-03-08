@@ -76,6 +76,14 @@ func AddAndCommit(t *testing.T, dir string, name string) {
 	}
 }
 
+func GitStash(t *testing.T, dir string) {
+	gitStashCmd := exec.Command("git", "stash")
+	gitStashCmd.Dir = dir
+	if err := gitStashCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func CommitNewFile(t *testing.T, dir string, name string) {
 	MkFile(t, dir, name)
 	AddAndCommit(t, dir, name)

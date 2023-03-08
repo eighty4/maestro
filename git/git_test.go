@@ -203,11 +203,7 @@ func TestPull_WithStashedChanges(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.MkFile(t, dir, "stashed_file")
 	testutil.GitAdd(t, dir, "stashed_file")
-	gitStashCmd := exec.Command("git", "stash")
-	gitStashCmd.Dir = dir
-	if err := gitStashCmd.Run(); err != nil {
-		t.Fatal(err)
-	}
+	testutil.GitStash(t, dir)
 
 	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0}, []*StashedChangeset{{
 		Description:  "adding pkg.go.dev badge",
@@ -529,11 +525,7 @@ func TestStashList(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.MkFile(t, dir, "stashed_file")
 	testutil.GitAdd(t, dir, "stashed_file")
-	gitStashCmd := exec.Command("git", "stash")
-	gitStashCmd.Dir = dir
-	if err := gitStashCmd.Run(); err != nil {
-		t.Fatal(err)
-	}
+	testutil.GitStash(t, dir)
 
 	stashes, err := StashList(dir)
 	assert.Nil(t, err)

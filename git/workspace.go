@@ -135,6 +135,11 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 							status = SyncWarning
 							messages = append(messages, fmt.Sprintf("%d untracked %s", s.RepoState.UntrackedFiles, util.PluralPrint("file", s.RepoState.UntrackedFiles)))
 						}
+						stashedChangesCount := len(s.StashList)
+						if stashedChangesCount != 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d stashed %s", stashedChangesCount, util.PluralPrint("change", stashedChangesCount)))
+						}
 						var message string
 						if len(messages) > 0 {
 							message = strings.Join(messages, ", ")

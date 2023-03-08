@@ -117,6 +117,29 @@ func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 	assert.Nil(t, update)
 }
 
+func TestWorkspace_Sync_PullsRepo_WithStashedChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	repoDir := path.Join(dir, "sse")
+	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
+	testutil.MkFile(t, repoDir, "stashed_file")
+	testutil.GitAdd(t, repoDir, "stashed_file")
+	testutil.GitStash(t, repoDir)
+
+	work := NewWorkspace(dir, []*Repository{NewRepository("sse", repoDir, "https://github.com/asdgsadgasdgasgasdg")}, 1)
+	c := work.Sync()
+	update, ok := <-c
+	assert.True(t, ok)
+	assert.Equal(t, SyncWarning, update.Status)
+	assert.Equal(t, PullSync, update.Op)
+	assert.Equal(t, "sse", update.Repo)
+	assert.Equal(t, "1 stashed change", update.Message)
+	update, ok = <-c
+	assert.False(t, ok)
+	assert.Nil(t, update)
+}
+
 func TestWorkspace_Sync_PullsRepo_Failure(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
