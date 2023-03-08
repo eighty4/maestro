@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type CloneStatus string
@@ -50,6 +51,7 @@ type PullUpdate struct {
 	Message       string
 	PulledCommits int
 	RepoState     *RepoState
+	StashList     []*StashedChangeset
 }
 
 // RepoState holds data from `git status` and is available with git.Status.
@@ -135,11 +137,26 @@ func Pull(dir string) <-chan *PullUpdate {
 			if err != nil {
 				log.Printf("[ERROR] git.Pull(%s) resolve pulled commit count error %s\n", dir, err.Error())
 			}
-			repoState, err := Status(dir)
-			if err != nil {
-				log.Printf("[ERROR] git.Status(%s) error %s\n", dir, err.Error())
-			}
-			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: repoState}
+			wg := sync.WaitGroup{}
+			wg.Add(2)
+			var repoState *RepoState
+			go func() {
+				repoState, err = Status(dir)
+				if err != nil {
+					log.Printf("[ERROR] git.Status(%s) error %s\n", dir, err.Error())
+				}
+				wg.Done()
+			}()
+			var stashList []*StashedChangeset
+			go func() {
+				stashList, err = StashList(dir)
+				if err != nil {
+					log.Printf("[ERROR] git.StashList(%s) error %s\n", dir, err.Error())
+				}
+				wg.Done()
+			}()
+			wg.Wait()
+			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: repoState, StashList: stashList}
 		} else {
 			update := makePullErrorUpdate(stderr.String())
 			if update == nil {

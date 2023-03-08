@@ -120,7 +120,7 @@ func TestClone_Fails_WithNotFound(t *testing.T) {
 	testCloneChannel(t, c, CloneRepoNotFound, "repository not found")
 }
 
-func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, expMessage string, expRepoState *RepoState) {
+func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, expMessage string, expRepoState *RepoState, expStashList []*StashedChangeset) {
 	u, ok := <-p
 	assert.True(t, ok)
 	assert.Equal(t, Pulling, u.Status)
@@ -133,6 +133,17 @@ func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, e
 		assert.Nil(t, u.RepoState)
 	} else {
 		assert.Equal(t, expRepoState.LocalCommits, u.RepoState.LocalCommits)
+	}
+	if expStashList == nil {
+		assert.Nil(t, u.StashList)
+	} else {
+		assert.Equal(t, len(expStashList), len(u.StashList))
+		for i, stashed := range u.StashList {
+			assert.Equal(t, expStashList[i].Description, stashed.Description)
+			assert.Equal(t, expStashList[i].Name, stashed.Name)
+			assert.Equal(t, expStashList[i].OnBranch, stashed.OnBranch)
+			assert.Equal(t, expStashList[i].OnCommitHash, stashed.OnCommitHash)
+		}
 	}
 	u, ok = <-p
 	assert.False(t, ok)
@@ -158,7 +169,7 @@ func TestPull(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, dir, 1)
 
-	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0})
+	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0}, nil)
 }
 
 func TestPull_WithLocalCommits(t *testing.T) {
@@ -168,7 +179,7 @@ func TestPull_WithLocalCommits(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.CommitNewFile(t, dir, "file1")
 
-	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 1})
+	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 1}, nil)
 }
 
 func TestPull_WithUnstagedChanges(t *testing.T) {
@@ -182,7 +193,28 @@ func TestPull_WithUnstagedChanges(t *testing.T) {
 		}
 	})
 
-	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0})
+	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0}, nil)
+}
+
+func TestPull_WithStashedChanges(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.MkFile(t, dir, "stashed_file")
+	testutil.GitAdd(t, dir, "stashed_file")
+	gitStashCmd := exec.Command("git", "stash")
+	gitStashCmd.Dir = dir
+	if err := gitStashCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0}, []*StashedChangeset{{
+		Description:  "adding pkg.go.dev badge",
+		Name:         "stash@{0}",
+		OnBranch:     "main",
+		OnCommitHash: "7f04bd8",
+	}})
 }
 
 func TestPull_Fails_DirNotRepo(t *testing.T) {
@@ -193,7 +225,7 @@ fatal: not a git repository (or any of the parent directories): .git`
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	testPullChannel(t, Pull(dir), NotRepository, "not a repository", nil)
+	testPullChannel(t, Pull(dir), NotRepository, "not a repository", nil, nil)
 }
 
 const pullDetachedHead = `
@@ -217,7 +249,7 @@ func TestPull_Fails_WithDetachedHead(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.Checkout(t, dir, "5692a1bb7f5796ec3c0237c8cb0a87212b36b91e")
 
-	testPullChannel(t, Pull(dir), DetachedHead, "detached from a branch", nil)
+	testPullChannel(t, Pull(dir), DetachedHead, "detached from a branch", nil, nil)
 }
 
 const pullNotPossibleToFastForward = `
@@ -244,7 +276,7 @@ func TestPull_Fails_WithMergeConflict(t *testing.T) {
 	})
 	testutil.AddAndCommit(t, dir, "README.md")
 
-	testPullChannel(t, Pull(dir), MergeConflict, "unable to pull without a merge or interactive rebase", nil)
+	testPullChannel(t, Pull(dir), MergeConflict, "unable to pull without a merge or interactive rebase", nil, nil)
 	assertNotRebasing(t, dir)
 }
 
@@ -273,7 +305,7 @@ func TestPull_Fails_WithOverwritesLocalChanges(t *testing.T) {
 		}
 	})
 
-	testPullChannel(t, Pull(dir), OverwritesLocalChanges, "local changes would be overwritten", nil)
+	testPullChannel(t, Pull(dir), OverwritesLocalChanges, "local changes would be overwritten", nil, nil)
 	assertNotRebasing(t, dir)
 }
 
@@ -301,7 +333,7 @@ func TestPull_Fails_WithConnectionFailure_WithoutFailureReason(t *testing.T) {
 	if err := os.Setenv("GIT_SSH_COMMAND", "false"); err != nil {
 		t.Fatal(err.Error())
 	}
-	testPullChannel(t, Pull(dir), ConnectionFailure, "connection failure with remote repository", nil)
+	testPullChannel(t, Pull(dir), ConnectionFailure, "connection failure with remote repository", nil, nil)
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
@@ -333,7 +365,7 @@ func TestPull_Fails_WithConnectionFailure_WithFailureReason(t *testing.T) {
 	if err := os.Setenv("GIT_SSH_COMMAND", "sleep foo"); err != nil {
 		t.Fatal(err.Error())
 	}
-	testPullChannel(t, Pull(dir), ConnectionFailure, `"usage: sleep seconds"`, nil)
+	testPullChannel(t, Pull(dir), ConnectionFailure, `"usage: sleep seconds"`, nil, nil)
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
@@ -360,7 +392,7 @@ func TestPull_Fails_WithGitHubRepoNotFoundConnectionError_MappedToRepositoryNotF
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.SetGitRemoteOriginUrl(t, dir, "git@github.com:eighty4/aaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil)
+	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil, nil)
 }
 
 const pullCouldNotResolveHost = `
@@ -380,7 +412,7 @@ func TestPull_Fails_WithCouldNotResolveHost(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://gibhub.com/eighty4/sse")
 
-	testPullChannel(t, Pull(dir), CouldNotResolveHost, "could not resolve host", nil)
+	testPullChannel(t, Pull(dir), CouldNotResolveHost, "could not resolve host", nil, nil)
 }
 
 const pullRemoteBranchNotFound = `
@@ -408,7 +440,7 @@ func TestPull_Fails_WithRemoteBranchNotFound(t *testing.T) {
 		t.Fatal(gitCommitCmdStderr.String())
 	}
 
-	testPullChannel(t, Pull(dir), RemoteBranchNotFound, "tracking branch not found on remote", nil)
+	testPullChannel(t, Pull(dir), RemoteBranchNotFound, "tracking branch not found on remote", nil, nil)
 }
 
 const pullUnsetUpstream = `
@@ -436,7 +468,7 @@ func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.InitRepo(t, dir)
 
-	testPullChannel(t, Pull(dir), UnsetUpstream, "not tracking an upstream remote", nil)
+	testPullChannel(t, Pull(dir), UnsetUpstream, "not tracking an upstream remote", nil, nil)
 }
 
 const pullRepositoryNotFound = `
@@ -456,7 +488,7 @@ func TestPull_Fails_WithRepositoryNotFound(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.SetGitRemoteOriginUrl(t, dir, "https://eighty4.io")
 
-	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil)
+	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil, nil)
 }
 
 func TestRevParseShowTopLevel_NotRepo(t *testing.T) {
