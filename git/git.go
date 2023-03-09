@@ -60,6 +60,13 @@ type RepoState struct {
 	UntrackedFiles  int
 }
 
+type StashedChangeset struct {
+	Description  string
+	Name         string
+	OnBranch     string
+	OnCommitHash string
+}
+
 func Clone(dir string, url string) <-chan *CloneUpdate {
 	c := make(chan *CloneUpdate)
 	go func() {
@@ -255,6 +262,41 @@ func RevListCommitCount(dir string, fromCommitHash string, toCommitHash string) 
 	} else {
 		return commitCount, nil
 	}
+}
+
+func StashList(dir string) ([]*StashedChangeset, error) {
+	gitStashListCmd := exec.Command("git", "stash", "list")
+	gitStashListCmd.Dir = dir
+	var stdoutBuf bytes.Buffer
+	gitStashListCmd.Stdout = &stdoutBuf
+	gitStashListCmd.Stderr = nil
+	err := gitStashListCmd.Run()
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error on 'git stash list' (%s)", err.Error()))
+	}
+	stdout := strings.TrimSpace(stdoutBuf.String())
+	if len(stdout) == 0 {
+		return nil, nil
+	}
+	lines := strings.Split(stdout, "\n")
+	var stashes []*StashedChangeset
+	for _, line := range lines {
+		lineSplit := strings.Split(line, ":")
+		name := lineSplit[0]
+		trimmedOnBranchSegment := strings.TrimSpace(lineSplit[1])
+		onBranch := trimmedOnBranchSegment[strings.LastIndex(trimmedOnBranchSegment, " ")+1:]
+		trimmedDescription := strings.TrimSpace(lineSplit[2])
+		spaceAfterCommitHash := strings.Index(trimmedDescription, " ")
+		onCommitHash := trimmedDescription[0:spaceAfterCommitHash]
+		description := trimmedDescription[spaceAfterCommitHash+1:]
+		stashes = append(stashes, &StashedChangeset{
+			Description:  description,
+			Name:         name,
+			OnBranch:     onBranch,
+			OnCommitHash: onCommitHash,
+		})
+	}
+	return stashes, nil
 }
 
 func Status(dir string) (*RepoState, error) {

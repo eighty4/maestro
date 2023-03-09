@@ -490,6 +490,56 @@ func TestRevParseShowTopLevel_Subdir(t *testing.T) {
 	assert.Equal(t, dir, result)
 }
 
+func TestStashList(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.MkFile(t, dir, "stashed_file")
+	testutil.GitAdd(t, dir, "stashed_file")
+	gitStashCmd := exec.Command("git", "stash")
+	gitStashCmd.Dir = dir
+	if err := gitStashCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	stashes, err := StashList(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(stashes))
+	assert.Equal(t, "stash@{0}", stashes[0].Name)
+	assert.Equal(t, "main", stashes[0].OnBranch)
+	assert.Equal(t, "adding pkg.go.dev badge", stashes[0].Description)
+	assert.Equal(t, "7f04bd8", stashes[0].OnCommitHash)
+	gitRevParseCmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+	gitRevParseCmd.Dir = dir
+	var stdoutBuf bytes.Buffer
+	gitRevParseCmd.Stdout = &stdoutBuf
+	if err := gitRevParseCmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, strings.TrimSpace(stdoutBuf.String()), stashes[0].OnCommitHash)
+}
+
+func TestStashList_EmptyStash(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+
+	stashes, err := StashList(dir)
+	assert.Nil(t, err)
+	assert.Nil(t, stashes)
+}
+
+func TestStashList_Errors_NotRepository(t *testing.T) {
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+
+	stashes, err := StashList(dir)
+	assert.Nil(t, stashes)
+	assert.NotNil(t, err)
+}
+
 func TestStatus_NoLocalCommits(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
