@@ -61,7 +61,8 @@ func TestWorkspace_Sync_ClonesRepo_Failure(t *testing.T) {
 	assert.Equal(t, SyncFailure, update.Status)
 	assert.Equal(t, CloneSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
-	assert.Equal(t, "repository not found", update.Message)
+	assert.Equal(t, "", update.Message)
+	assert.Equal(t, "repository not found", update.Error)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)
@@ -83,6 +84,7 @@ func TestWorkspace_Sync_PullsRepo_WithPulledCommits(t *testing.T) {
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
 	assert.Equal(t, "pulled 2 commits", update.Message)
+	assert.Equal(t, "", update.Error)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)
@@ -112,6 +114,7 @@ func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
 	assert.Equal(t, "1 local commit, 1 staged change, 1 unstaged change, 1 untracked file", update.Message)
+	assert.Equal(t, "", update.Error)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)
@@ -135,6 +138,7 @@ func TestWorkspace_Sync_PullsRepo_WithStashedChanges(t *testing.T) {
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
 	assert.Equal(t, "1 stashed change", update.Message)
+	assert.Equal(t, "", update.Error)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)
@@ -156,7 +160,8 @@ func TestWorkspace_Sync_PullsRepo_Failure(t *testing.T) {
 	assert.Equal(t, SyncFailure, update.Status)
 	assert.Equal(t, PullSync, update.Op)
 	assert.Equal(t, "sse", update.Repo)
-	assert.Equal(t, "not tracking an upstream remote", update.Message)
+	assert.Equal(t, "", update.Message)
+	assert.Equal(t, "not tracking an upstream remote", update.Error)
 	update, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, update)

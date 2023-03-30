@@ -27,6 +27,7 @@ type SyncUpdate struct {
 	Repo    string
 	Op      SyncOp
 	Message string
+	Error   string
 	Status  SyncStatus
 }
 
@@ -93,7 +94,7 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncSuccess, Message: "cloned from " + repo.Git.Url}
 						break
 					default:
-						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncFailure, Message: s.Message}
+						c <- &SyncUpdate{Repo: repo.Name, Op: CloneSync, Status: SyncFailure, Error: s.Error}
 						break
 					}
 					wg.Done()
@@ -110,46 +111,43 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 				pc := Pull(repo.Dir)
 				for {
 					s := <-pc
-					switch s.Status {
-					case Pulling:
+					if s.Status == Pulling {
 						continue
-					case Pulled:
-						var messages []string
-						status := SyncSuccess
-						if s.PulledCommits > 0 {
-							messages = append(messages, fmt.Sprintf("pulled %d %s", s.PulledCommits, util.PluralPrint("commit", s.PulledCommits)))
-						}
-						if s.RepoState.LocalCommits > 0 {
-							status = SyncWarning
-							messages = append(messages, fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits)))
-						}
-						if s.RepoState.StagedChanges > 0 {
-							status = SyncWarning
-							messages = append(messages, fmt.Sprintf("%d staged %s", s.RepoState.StagedChanges, util.PluralPrint("change", s.RepoState.StagedChanges)))
-						}
-						if s.RepoState.UnstagedChanges > 0 {
-							status = SyncWarning
-							messages = append(messages, fmt.Sprintf("%d unstaged %s", s.RepoState.UnstagedChanges, util.PluralPrint("change", s.RepoState.UnstagedChanges)))
-						}
-						if s.RepoState.UntrackedFiles > 0 {
-							status = SyncWarning
-							messages = append(messages, fmt.Sprintf("%d untracked %s", s.RepoState.UntrackedFiles, util.PluralPrint("file", s.RepoState.UntrackedFiles)))
-						}
-						stashedChangesCount := len(s.StashList)
-						if stashedChangesCount != 0 {
-							status = SyncWarning
-							messages = append(messages, fmt.Sprintf("%d stashed %s", stashedChangesCount, util.PluralPrint("change", stashedChangesCount)))
-						}
-						var message string
-						if len(messages) > 0 {
-							message = strings.Join(messages, ", ")
-						}
-						c <- &SyncUpdate{Repo: repo.Name, Op: PullSync, Status: status, Message: message}
-						break
-					default:
-						c <- &SyncUpdate{Repo: repo.Name, Op: PullSync, Status: SyncFailure, Message: s.Message}
-						break
 					}
+					var messages []string
+					status := SyncSuccess
+					if s.PulledCommits > 0 {
+						messages = append(messages, fmt.Sprintf("pulled %d %s", s.PulledCommits, util.PluralPrint("commit", s.PulledCommits)))
+					}
+					if s.RepoState.LocalCommits > 0 {
+						status = SyncWarning
+						messages = append(messages, fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits)))
+					}
+					if s.RepoState.StagedChanges > 0 {
+						status = SyncWarning
+						messages = append(messages, fmt.Sprintf("%d staged %s", s.RepoState.StagedChanges, util.PluralPrint("change", s.RepoState.StagedChanges)))
+					}
+					if s.RepoState.UnstagedChanges > 0 {
+						status = SyncWarning
+						messages = append(messages, fmt.Sprintf("%d unstaged %s", s.RepoState.UnstagedChanges, util.PluralPrint("change", s.RepoState.UnstagedChanges)))
+					}
+					if s.RepoState.UntrackedFiles > 0 {
+						status = SyncWarning
+						messages = append(messages, fmt.Sprintf("%d untracked %s", s.RepoState.UntrackedFiles, util.PluralPrint("file", s.RepoState.UntrackedFiles)))
+					}
+					stashedChangesCount := len(s.StashList)
+					if stashedChangesCount != 0 {
+						status = SyncWarning
+						messages = append(messages, fmt.Sprintf("%d stashed %s", stashedChangesCount, util.PluralPrint("change", stashedChangesCount)))
+					}
+					var message string
+					if len(messages) > 0 {
+						message = strings.Join(messages, ", ")
+					}
+					if s.Status != Pulled {
+						status = SyncFailure
+					}
+					c <- &SyncUpdate{Repo: repo.Name, Op: PullSync, Status: status, Message: message, Error: s.Error}
 					wg.Done()
 					return
 				}

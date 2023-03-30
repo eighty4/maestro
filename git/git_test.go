@@ -34,11 +34,11 @@ func testCloneChannel(t *testing.T, c <-chan *CloneUpdate, expStatus CloneStatus
 	u, ok := <-c
 	assert.True(t, ok)
 	assert.Equal(t, Cloning, u.Status)
-	assert.Equal(t, "", u.Message)
+	assert.Equal(t, "", u.Error)
 	u, ok = <-c
 	assert.True(t, ok)
 	assert.Equal(t, expStatus, u.Status)
-	assert.Equal(t, expMessage, u.Message)
+	assert.Equal(t, expMessage, u.Error)
 	u, ok = <-c
 	assert.False(t, ok)
 	assert.Nil(t, u)
@@ -69,7 +69,7 @@ fatal: could not read Username for 'https://github.com': terminal prompts disabl
 func TestMakeCloneErrorUpdate_ForAuthRequired(t *testing.T) {
 	u := makeCloneErrorUpdate(cloneAuthRequired[1:])
 	assert.Equal(t, AuthRequired, u.Status)
-	assert.Equal(t, "authentication required", u.Message)
+	assert.Equal(t, "authentication required", u.Error)
 }
 
 func TestClone_Fails_WithAuthFailed(t *testing.T) {
@@ -89,7 +89,7 @@ fatal: unable to update url base from redirection:
 func TestMakeCloneErrorUpdate_ForBadRedirect(t *testing.T) {
 	u := makeCloneErrorUpdate(cloneBadRedirect[1:])
 	assert.Equal(t, BadRedirect, u.Status)
-	assert.Equal(t, "following http redirect did not connect to a git repository", u.Message)
+	assert.Equal(t, "following http redirect did not connect to a git repository", u.Error)
 }
 
 func TestClone_Fails_WithBadRedirect(t *testing.T) {
@@ -108,7 +108,7 @@ fatal: repository 'https://github.com/asdgsadgasdgasgasdg/' not found`
 func TestMakeCloneErrorUpdate_ForRepoNotFound(t *testing.T) {
 	u := makeCloneErrorUpdate(cloneNotFound[1:])
 	assert.Equal(t, CloneRepoNotFound, u.Status)
-	assert.Equal(t, "repository not found", u.Message)
+	assert.Equal(t, "repository not found", u.Error)
 }
 
 func TestClone_Fails_WithNotFound(t *testing.T) {
@@ -124,11 +124,11 @@ func testPullChannel(t *testing.T, p <-chan *PullUpdate, expStatus PullStatus, e
 	u, ok := <-p
 	assert.True(t, ok)
 	assert.Equal(t, Pulling, u.Status)
-	assert.Equal(t, "", u.Message)
+	assert.Equal(t, "", u.Error)
 	u, ok = <-p
 	assert.True(t, ok)
 	assert.Equal(t, expStatus, u.Status)
-	assert.Equal(t, expMessage, u.Message)
+	assert.Equal(t, expMessage, u.Error)
 	if expRepoState == nil {
 		assert.Nil(t, u.RepoState)
 	} else {
@@ -234,7 +234,7 @@ See git-pull(1) for details.
 func TestMakePullErrorUpdate_ForDetachedHead(t *testing.T) {
 	u := makePullErrorUpdate(pullDetachedHead[1:])
 	assert.Equal(t, DetachedHead, u.Status)
-	assert.Equal(t, "detached from a branch", u.Message)
+	assert.Equal(t, "detached from a branch", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -245,7 +245,12 @@ func TestPull_Fails_WithDetachedHead(t *testing.T) {
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
 	testutil.Checkout(t, dir, "5692a1bb7f5796ec3c0237c8cb0a87212b36b91e")
 
-	testPullChannel(t, Pull(dir), DetachedHead, "detached from a branch", nil, nil)
+	testPullChannel(t, Pull(dir), DetachedHead, "detached from a branch", &RepoState{
+		LocalCommits:    0,
+		StagedChanges:   0,
+		UnstagedChanges: 0,
+		UntrackedFiles:  0,
+	}, nil)
 }
 
 const pullNotPossibleToFastForward = `
@@ -255,7 +260,7 @@ fatal: Not possible to fast-forward, aborting.
 func TestMakePullErrorUpdate_ForMergeConflict(t *testing.T) {
 	u := makePullErrorUpdate(pullNotPossibleToFastForward[1:])
 	assert.Equal(t, MergeConflict, u.Status)
-	assert.Equal(t, "unable to pull without a merge or interactive rebase", u.Message)
+	assert.Equal(t, "unable to pull without a merge or interactive rebase", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -272,7 +277,12 @@ func TestPull_Fails_WithMergeConflict(t *testing.T) {
 	})
 	testutil.AddAndCommit(t, dir, "README.md")
 
-	testPullChannel(t, Pull(dir), MergeConflict, "unable to pull without a merge or interactive rebase", nil, nil)
+	testPullChannel(t, Pull(dir), MergeConflict, "unable to pull without a merge or interactive rebase", &RepoState{
+		LocalCommits:    0,
+		StagedChanges:   0,
+		UnstagedChanges: 0,
+		UntrackedFiles:  0,
+	}, nil)
 	assertNotRebasing(t, dir)
 }
 
@@ -285,7 +295,7 @@ Aborting`
 func TestMakePullErrorUpdate_ForOverwritesLocalChanges(t *testing.T) {
 	u := makePullErrorUpdate(pullMergeConflict[1:])
 	assert.Equal(t, OverwritesLocalChanges, u.Status)
-	assert.Equal(t, "local changes would be overwritten", u.Message)
+	assert.Equal(t, "local changes would be overwritten", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -301,7 +311,7 @@ func TestPull_Fails_WithOverwritesLocalChanges(t *testing.T) {
 		}
 	})
 
-	testPullChannel(t, Pull(dir), OverwritesLocalChanges, "local changes would be overwritten", nil, nil)
+	testPullChannel(t, Pull(dir), OverwritesLocalChanges, "local changes would be overwritten", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 	assertNotRebasing(t, dir)
 }
 
@@ -314,7 +324,7 @@ and the repository exists.`
 func TestMakePullErrorUpdate_ForConnectionFailure(t *testing.T) {
 	u := makePullErrorUpdate(pullConnectionFailure[1:])
 	assert.Equal(t, ConnectionFailure, u.Status)
-	assert.Equal(t, "connection failure with remote repository", u.Message)
+	assert.Equal(t, "connection failure with remote repository", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -329,7 +339,7 @@ func TestPull_Fails_WithConnectionFailure_WithoutFailureReason(t *testing.T) {
 	if err := os.Setenv("GIT_SSH_COMMAND", "false"); err != nil {
 		t.Fatal(err.Error())
 	}
-	testPullChannel(t, Pull(dir), ConnectionFailure, "connection failure with remote repository", nil, nil)
+	testPullChannel(t, Pull(dir), ConnectionFailure, "connection failure with remote repository", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
@@ -343,7 +353,7 @@ and the repository exists.`
 func TestMakePullErrorUpdate_ForConnectionFailureWithReason(t *testing.T) {
 	u := makePullErrorUpdate(pullConnectionFailureWithReason[1:])
 	assert.Equal(t, ConnectionFailure, u.Status)
-	assert.Equal(t, "\"exit 1: line 0: exit: too many arguments\"", u.Message)
+	assert.Equal(t, "\"exit 1: line 0: exit: too many arguments\"", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -361,7 +371,7 @@ func TestPull_Fails_WithConnectionFailure_WithFailureReason(t *testing.T) {
 	if err := os.Setenv("GIT_SSH_COMMAND", "sleep foo"); err != nil {
 		t.Fatal(err.Error())
 	}
-	testPullChannel(t, Pull(dir), ConnectionFailure, `"usage: sleep seconds"`, nil, nil)
+	testPullChannel(t, Pull(dir), ConnectionFailure, `"usage: sleep seconds"`, &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 	_ = os.Setenv("GIT_SSH_COMMAND", ogGscValue)
 }
 
@@ -375,7 +385,7 @@ and the repository exists.`
 func TestMakePullErrorUpdate_ForGitHubNotFound(t *testing.T) {
 	u := makePullErrorUpdate(pullGitHubNotFound[1:])
 	assert.Equal(t, PullRepoNotFound, u.Status)
-	assert.Equal(t, "repository not found", u.Message)
+	assert.Equal(t, "repository not found", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -397,7 +407,7 @@ fatal: unable to access 'https://github.com/eighty4/sse/': Could not resolve hos
 func TestMakePullErrorUpdate_ForCouldNotResolveHost(t *testing.T) {
 	u := makePullErrorUpdate(pullCouldNotResolveHost[1:])
 	assert.Equal(t, CouldNotResolveHost, u.Status)
-	assert.Equal(t, "could not resolve host", u.Message)
+	assert.Equal(t, "could not resolve host", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -418,7 +428,7 @@ from the remote, but no such ref was fetched.`
 func TestMakePullErrorUpdate_ForRemoteBranchNotFound(t *testing.T) {
 	u := makePullErrorUpdate(pullRemoteBranchNotFound[1:])
 	assert.Equal(t, RemoteBranchNotFound, u.Status)
-	assert.Equal(t, "tracking branch not found on remote", u.Message)
+	assert.Equal(t, "tracking branch not found on remote", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -436,7 +446,7 @@ func TestPull_Fails_WithRemoteBranchNotFound(t *testing.T) {
 		t.Fatal(gitCommitCmdStderr.String())
 	}
 
-	testPullChannel(t, Pull(dir), RemoteBranchNotFound, "tracking branch not found on remote", nil, nil)
+	testPullChannel(t, Pull(dir), RemoteBranchNotFound, "tracking branch not found on remote", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 }
 
 const pullUnsetUpstream = `
@@ -454,7 +464,7 @@ If you wish to set tracking information for this branch you can do so with:
 func TestMakePullErrorUpdate_ForUnsetUpstream(t *testing.T) {
 	u := makePullErrorUpdate(pullUnsetUpstream[1:])
 	assert.Equal(t, UnsetUpstream, u.Status)
-	assert.Equal(t, "not tracking an upstream remote", u.Message)
+	assert.Equal(t, "not tracking an upstream remote", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -464,7 +474,7 @@ func TestPull_Fails_WithUnsetUpstream(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.InitRepo(t, dir)
 
-	testPullChannel(t, Pull(dir), UnsetUpstream, "not tracking an upstream remote", nil, nil)
+	testPullChannel(t, Pull(dir), UnsetUpstream, "not tracking an upstream remote", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 }
 
 const pullRepositoryNotFound = `
@@ -473,7 +483,7 @@ fatal: repository 'https://eighty4.io/' not found`
 func TestMakePullErrorUpdate_ForRepositoryNotFound(t *testing.T) {
 	u := makePullErrorUpdate(pullRepositoryNotFound[1:])
 	assert.Equal(t, PullRepoNotFound, u.Status)
-	assert.Equal(t, "repository not found", u.Message)
+	assert.Equal(t, "repository not found", u.Error)
 	assert.Nil(t, u.RepoState)
 }
 
@@ -482,9 +492,9 @@ func TestPull_Fails_WithRepositoryNotFound(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
-	testutil.SetGitRemoteOriginUrl(t, dir, "https://eighty4.io")
+	testutil.SetGitRemoteOriginUrl(t, dir, "https://bing.com")
 
-	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", nil, nil)
+	testPullChannel(t, Pull(dir), PullRepoNotFound, "repository not found", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 }
 
 func TestRevParseShowTopLevel_NotRepo(t *testing.T) {

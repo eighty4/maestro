@@ -24,8 +24,8 @@ const (
 )
 
 type CloneUpdate struct {
-	Status  CloneStatus
-	Message string
+	Status CloneStatus
+	Error  string
 }
 
 type PullStatus string
@@ -48,7 +48,7 @@ const (
 
 type PullUpdate struct {
 	Status        PullStatus
-	Message       string
+	Error         string
 	PulledCommits int
 	RepoState     *RepoState
 	StashList     []*StashedChangeset
@@ -86,7 +86,7 @@ func Clone(dir string, url string) <-chan *CloneUpdate {
 			update := makeCloneErrorUpdate(stderr.String())
 			if update == nil {
 				log.Printf("[ERROR] git.Clone(%s, %s) unhandled error; stderr: %s", dir, url, stderr.String())
-				update = &CloneUpdate{Status: CloneFailed, Message: err.Error()}
+				update = &CloneUpdate{Status: CloneFailed, Error: err.Error()}
 			}
 			c <- update
 		}
@@ -108,13 +108,13 @@ const (
 
 func makeCloneErrorUpdate(stderr string) *CloneUpdate {
 	if strings.Contains(stderr, cloneConnectionFailureErr) {
-		return &CloneUpdate{Status: CloneFailed, Message: cloneConnectionFailureMsg}
+		return &CloneUpdate{Status: CloneFailed, Error: cloneConnectionFailureMsg}
 	} else if strings.Contains(stderr, cloneAuthFailedErr) {
-		return &CloneUpdate{Status: AuthRequired, Message: cloneAuthFailedMsg}
+		return &CloneUpdate{Status: AuthRequired, Error: cloneAuthFailedMsg}
 	} else if strings.Contains(stderr, cloneRepoNotFoundErr) {
-		return &CloneUpdate{Status: CloneRepoNotFound, Message: cloneRepoNotFoundMsg}
+		return &CloneUpdate{Status: CloneRepoNotFound, Error: cloneRepoNotFoundMsg}
 	} else if strings.Contains(stderr, cloneBadRequestErr) {
-		return &CloneUpdate{Status: BadRedirect, Message: cloneBadRequestMsg}
+		return &CloneUpdate{Status: BadRedirect, Error: cloneBadRequestMsg}
 	} else {
 		return nil
 	}
@@ -132,39 +132,43 @@ func Pull(dir string) <-chan *PullUpdate {
 		gitPullCmd.Stderr = &stderr
 		err := gitPullCmd.Run()
 		stdoutStr := stdout.String()
+		var update *PullUpdate
 		if err == nil {
-			pulledCommitCount, err := getPulledCommitCount(dir, stdoutStr)
-			if err != nil {
-				log.Printf("[ERROR] git.Pull(%s) resolve pulled commit count error %s\n", dir, err.Error())
+			update = &PullUpdate{Status: Pulled}
+		} else {
+			update = makePullErrorUpdate(stderr.String())
+			if update == nil {
+				log.Printf("[ERROR] git.Pull(%s) unhandled error\nstderr:\n==========\n%s\n==========\n", dir, stderr.String())
+				update = &PullUpdate{Status: PullFailed, Error: err.Error()}
 			}
+		}
+		if update.Status != NotRepository {
 			wg := sync.WaitGroup{}
-			wg.Add(2)
-			var repoState *RepoState
+			wg.Add(3)
 			go func() {
-				repoState, err = Status(dir)
+				update.PulledCommits, err = getPulledCommitCount(dir, stdoutStr)
+				if err != nil {
+					log.Printf("[ERROR] git.Pull(%s) resolve pulled commit count error %s\n", dir, err.Error())
+				}
+				wg.Done()
+			}()
+			go func() {
+				update.RepoState, err = Status(dir)
 				if err != nil {
 					log.Printf("[ERROR] git.Status(%s) error %s\n", dir, err.Error())
 				}
 				wg.Done()
 			}()
-			var stashList []*StashedChangeset
 			go func() {
-				stashList, err = StashList(dir)
+				update.StashList, err = StashList(dir)
 				if err != nil {
 					log.Printf("[ERROR] git.StashList(%s) error %s\n", dir, err.Error())
 				}
 				wg.Done()
 			}()
 			wg.Wait()
-			c <- &PullUpdate{Status: Pulled, PulledCommits: pulledCommitCount, RepoState: repoState, StashList: stashList}
-		} else {
-			update := makePullErrorUpdate(stderr.String())
-			if update == nil {
-				log.Printf("[ERROR] git.Pull(%s) unhandled error\nstderr:\n==========\n%s\n==========\n", dir, stderr.String())
-				update = &PullUpdate{Status: PullFailed, Message: err.Error()}
-			}
-			c <- update
 		}
+		c <- update
 		close(c)
 	}()
 	return c
@@ -209,7 +213,7 @@ func makePullErrorUpdate(stderr string) *PullUpdate {
 	if strings.Contains(stderr, pullConnectionFailureErr) {
 		connectionFailureErrIndex := strings.Index(stderr, pullConnectionFailureErr)
 		if connectionFailureErrIndex == 0 {
-			return &PullUpdate{Status: ConnectionFailure, Message: pullConnectionFailureMsg}
+			return &PullUpdate{Status: ConnectionFailure, Error: pullConnectionFailureMsg}
 		} else {
 			connectionFailureCauseEndIndex := connectionFailureErrIndex - 1
 			if stderr[connectionFailureCauseEndIndex-1] == '.' {
@@ -217,29 +221,31 @@ func makePullErrorUpdate(stderr string) *PullUpdate {
 			}
 			connectionFailureCause := strings.TrimSpace(stderr[0:connectionFailureCauseEndIndex])
 			if connectionFailureCause == pullGitHubRepositoryNotFoundErr {
-				return &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
+				return &PullUpdate{Status: PullRepoNotFound, Error: pullRepositoryNotFoundMsg}
 			} else {
-				return &PullUpdate{Status: ConnectionFailure, Message: fmt.Sprintf(`"%s"`, connectionFailureCause)}
+				return &PullUpdate{Status: ConnectionFailure, Error: fmt.Sprintf(`"%s"`, connectionFailureCause)}
 			}
 		}
 	} else if strings.Contains(stderr, pullOverwritesLocalChangesErr) {
-		return &PullUpdate{Status: OverwritesLocalChanges, Message: pullOverwritesLocalChangesMsg}
+		return &PullUpdate{Status: OverwritesLocalChanges, Error: pullOverwritesLocalChangesMsg}
 	} else if strings.Contains(stderr, pullMergeConflictErr) {
-		return &PullUpdate{Status: MergeConflict, Message: pullMergeConflictMsg}
+		return &PullUpdate{Status: MergeConflict, Error: pullMergeConflictMsg}
 	} else if strings.Contains(stderr, pullDetachedHeadErr) {
-		return &PullUpdate{Status: DetachedHead, Message: pullDetachedHeadMsg}
+		return &PullUpdate{Status: DetachedHead, Error: pullDetachedHeadMsg}
 	} else if strings.Contains(stderr, pullRemoteBranchNotFoundErr) {
-		return &PullUpdate{Status: RemoteBranchNotFound, Message: pullRemoteBranchNotFoundMsg}
+		return &PullUpdate{Status: RemoteBranchNotFound, Error: pullRemoteBranchNotFoundMsg}
 	} else if strings.Contains(stderr, pullUnstagedChangesErr) {
-		return &PullUpdate{Status: UnstagedChanges, Message: pullUnstagedChangesMsg}
+		return &PullUpdate{Status: UnstagedChanges, Error: pullUnstagedChangesMsg}
 	} else if strings.Contains(stderr, pullUnsetUpstreamErr) {
-		return &PullUpdate{Status: UnsetUpstream, Message: pullUnsetUpstreamMsg}
+		return &PullUpdate{Status: UnsetUpstream, Error: pullUnsetUpstreamMsg}
 	} else if strings.Contains(stderr, pullCouldNotResolveHostErr) {
-		return &PullUpdate{Status: CouldNotResolveHost, Message: pullCouldNotResolveHostMsg}
+		return &PullUpdate{Status: CouldNotResolveHost, Error: pullCouldNotResolveHostMsg}
 	} else if strings.Index(stderr, pullNotRepositoryErr) == 0 {
-		return &PullUpdate{Status: NotRepository, Message: pullNotRepositoryMsg}
+		return &PullUpdate{Status: NotRepository, Error: pullNotRepositoryMsg}
 	} else if strings.Index(stderr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderr, pullRepositoryNotFoundErrPost) != -1 {
-		return &PullUpdate{Status: PullRepoNotFound, Message: pullRepositoryNotFoundMsg}
+		return &PullUpdate{Status: PullRepoNotFound, Error: pullRepositoryNotFoundMsg}
+	} else if stderr[0:7] == "fatal: " {
+		return &PullUpdate{Status: PullFailed, Error: stderr[0:7]}
 	} else {
 		return nil
 	}

@@ -6,6 +6,7 @@ import (
 	"github.com/eighty4/maestro/util"
 	"github.com/fatih/color"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 )
@@ -58,6 +59,8 @@ func gitSync(cfg *Config) {
 	up := NewUnicodePrinting()
 	// escapes %% to % so given maxNameLen == 3, fmtStr := "  %3s %s\n"
 	fmtStr := fmt.Sprintf("  %%%ds %%s %%s\n", maxNameLen)
+	willNetworkError := !hasInternetConnection()
+	syncErrorCount := 0
 
 	printStatusUpdate := func(s *git.SyncUpdate) {
 		var checkOrX string
@@ -70,9 +73,14 @@ func gitSync(cfg *Config) {
 			break
 		case git.SyncFailure:
 			checkOrX = up.redX
+			syncErrorCount++
 			break
 		}
-		fmt.Printf(fmtStr, s.Repo, checkOrX, s.Message)
+		message := s.Error
+		if willNetworkError || s.Error == "" {
+			message = s.Message
+		}
+		fmt.Printf(fmtStr, s.Repo, checkOrX, message)
 	}
 
 	println(fmt.Sprintf("Syncing %d repositories", len(ws.Repositories)))
@@ -82,10 +90,21 @@ func gitSync(cfg *Config) {
 		if ok {
 			printStatusUpdate(update)
 		} else {
-			println("Done!")
+			if !willNetworkError && syncErrorCount != len(ws.Repositories) {
+				println("Done!")
+			} else if willNetworkError {
+				println("No repositories were synced due to network connectivity.")
+			} else {
+				println("No repositories were synced.")
+			}
 			break
 		}
 	}
+}
+
+func hasInternetConnection() bool {
+	_, err := http.Get("https://github.com")
+	return err == nil
 }
 
 type UnicodePrinting struct {
