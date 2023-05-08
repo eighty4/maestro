@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_call:
 
 jobs:
 
@@ -63,10 +64,10 @@ jobs:
           git config --global user.name "Adam McKee"
           git config --global user.email "adam.be.g84d@gmail.com"
       - name: test
-        run: go list -f '{{.Dir}}' -m | xargs go test
         env:
           MAESTRO_CI: true
           MAESTRO_TEST_GIT: true
+        run: go list -f '{{.Dir}}' -m | xargs go test
 
   fmt:
     runs-on: ubuntu-22.04
