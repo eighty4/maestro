@@ -5,11 +5,29 @@
 
 A developer utility.
 
-## APIs
+## Installing
 
-[maestro/git](git) provides APIs for syncing a multi-repository workspace. `git.NewWorkspace` scans a directory for git
-repositories and provides access to the `Workspace.Sync` operation. Syncing delegates to `git.Clone` and `git.Pull` for
-each `git.Repository` configured with the workspace whether it's present or absent on within the workspace dir.
+Use Go 1.19 or later, and run `go install github.com/eighty4/maestro@latest`.
+
+Run `maestro` to verify install succeeded.
+
+## Syncing with `maestro git`
+
+Keep your workspace in sync with the `maestro git` command. This command performs a `git pull --ff-only` in each
+repository found nested within two subdirectories deep from the current working directory.
+
+![maestro git](git.svg)
+
+A `maestro.yaml` file allows repositories to be configured, enabling a `maestro git` command to also clone repositories
+not already present in the workspace. Eventually this feature could be used to enable an export/import workflow with a
+dev machine's workspaces before formatting or replacing hardware. Configuring a `maestro.yaml` example is
+[in the tests](config_test.go#L41).
+
+## Workspace APIs
+
+[maestro/git](git) provides the APIs for syncing a multi-repository workspace. `git.NewWorkspace` scans a directory for
+git repositories and provides access to the `Workspace.Sync` operation. Syncing delegates to `git.Clone` and `git.Pull`
+for each `git.Repository` configured with the workspace whether it's present or absent on within the workspace dir.
 
 The [maestro/composable](composable) module has wrappers for `exec.Cmd` to be used for managing local development
 processes and performing process healthchecks with HTTP GET and shell commands.
@@ -18,17 +36,3 @@ Gradle tasks, npm scripts and shell commands from a `.maestro` file.
 Re-visiting the project with the opportunity to use new Go [tooling](https://go.dev/doc/tutorial/workspaces) and
 [language](https://go.dev/doc/tutorial/generics) features (workspaces and generics), I rewrote process management
 but have yet to reimplement configuring and managing a local development environment.
-
-## Installing
-
-Use Go 1.19 or later, and run `go install github.com/eighty4/maestro@latest`.
-
-## Syncing with `maestro git`
-
-Maestro will sync a workspace of git repositories with the `maestro git` command. This command scans the current
-directory and all subdirectories for git repositories and performs a `git pull --ff-only` in each repository.
-
-A `maestro.yaml` file allows repositories to be configured, enabling a `maestro git` command to also clone repositories
-not already present in the workspace. Eventually this feature could be used to enable an export/import workflow with a dev
-machine's workspaces before formatting or replacing hardware. Configuring a `maestro.yaml` example is
-[in the tests](config_test.go#L41).
