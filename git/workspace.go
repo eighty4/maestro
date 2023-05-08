@@ -31,6 +31,10 @@ type SyncUpdate struct {
 	Status  SyncStatus
 }
 
+type SyncOptions struct {
+	DetailLocalChanges bool
+}
+
 // Workspace represents a local directory structure of git repositories.
 type Workspace struct {
 	RootDir      string
@@ -64,7 +68,10 @@ func NewWorkspace(rootDir string, repositories []*Repository, repoScanDepth int)
 // Sync performs clones and pulls to sync all Repository instances within a Workspace using the git.Clone and git.Pull APIs.
 // A git clone will be performed for any repositories configured within the Workspace that are not present on disk.
 // For Workspace repositories already cloned, the Sync operation will perform a git pull.
-func (w *Workspace) Sync() <-chan *SyncUpdate {
+func (w *Workspace) Sync(syncOptions *SyncOptions) <-chan *SyncUpdate {
+	if syncOptions == nil {
+		syncOptions = &SyncOptions{}
+	}
 	var clone []*Repository
 	var pull []*Repository
 	c := make(chan *SyncUpdate)
@@ -123,17 +130,31 @@ func (w *Workspace) Sync() <-chan *SyncUpdate {
 						status = SyncWarning
 						messages = append(messages, fmt.Sprintf("%d local %s", s.RepoState.LocalCommits, util.PluralPrint("commit", s.RepoState.LocalCommits)))
 					}
-					if s.RepoState.StagedChanges > 0 {
-						status = SyncWarning
-						messages = append(messages, fmt.Sprintf("%d staged %s", s.RepoState.StagedChanges, util.PluralPrint("change", s.RepoState.StagedChanges)))
-					}
-					if s.RepoState.UnstagedChanges > 0 {
-						status = SyncWarning
-						messages = append(messages, fmt.Sprintf("%d unstaged %s", s.RepoState.UnstagedChanges, util.PluralPrint("change", s.RepoState.UnstagedChanges)))
-					}
-					if s.RepoState.UntrackedFiles > 0 {
-						status = SyncWarning
-						messages = append(messages, fmt.Sprintf("%d untracked %s", s.RepoState.UntrackedFiles, util.PluralPrint("file", s.RepoState.UntrackedFiles)))
+					localChangesCount := 0
+					if syncOptions.DetailLocalChanges {
+						var localChangesDetail []string
+						if s.RepoState.StagedChanges > 0 {
+							localChangesCount += s.RepoState.StagedChanges
+							localChangesDetail = append(localChangesDetail, fmt.Sprintf("%d staged", s.RepoState.StagedChanges))
+						}
+						if s.RepoState.UnstagedChanges > 0 {
+							localChangesCount += s.RepoState.UnstagedChanges
+							localChangesDetail = append(localChangesDetail, fmt.Sprintf("%d not staged", s.RepoState.UnstagedChanges))
+						}
+						if s.RepoState.UntrackedFiles > 0 {
+							localChangesCount += s.RepoState.UntrackedFiles
+							localChangesDetail = append(localChangesDetail, fmt.Sprintf("%d untracked", s.RepoState.UntrackedFiles))
+						}
+						if localChangesCount > 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d local %s (%s)", localChangesCount, util.PluralPrint("change", localChangesCount), strings.Join(localChangesDetail, ", ")))
+						}
+					} else {
+						localChangesCount += s.RepoState.StagedChanges + s.RepoState.UnstagedChanges + s.RepoState.UntrackedFiles
+						if localChangesCount > 0 {
+							status = SyncWarning
+							messages = append(messages, fmt.Sprintf("%d local %s", localChangesCount, util.PluralPrint("change", localChangesCount)))
+						}
 					}
 					stashedChangesCount := len(s.StashList)
 					if stashedChangesCount != 0 {

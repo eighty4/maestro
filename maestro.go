@@ -35,6 +35,27 @@ func main() {
 	}
 }
 
+func gitSyncOptions() *git.SyncOptions {
+	dlcEnvVar := os.Getenv("MAESTRO_DETAIL_LOCAL_CHANGES")
+	syncOptions := &git.SyncOptions{}
+	if len(dlcEnvVar) > 0 {
+		switch dlcEnvVar {
+		case "true":
+			syncOptions.DetailLocalChanges = true
+			break
+		case "false":
+			syncOptions.DetailLocalChanges = false
+			break
+		default:
+			fmt.Println("MAESTRO_DETAIL_LOCAL_CHANGES must be a true or false value")
+			os.Exit(1)
+		}
+	} else {
+		syncOptions.DetailLocalChanges = len(os.Args) > 2 && os.Args[2] == "--detail-local-changes"
+	}
+	return syncOptions
+}
+
 func gitSync(cfg *Config) {
 	var repositories []*git.Repository
 	if cfg != nil {
@@ -84,7 +105,7 @@ func gitSync(cfg *Config) {
 	}
 
 	println(fmt.Sprintf("Syncing %d repositories", len(ws.Repositories)))
-	c := ws.Sync()
+	c := ws.Sync(gitSyncOptions())
 	for {
 		update, ok := <-c
 		if ok {
