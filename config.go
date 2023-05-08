@@ -90,7 +90,7 @@ func parseConfigBytes(dir string, bytes []byte) (*Config, error) {
 		for i, repo := range c.Workspace.Repositories {
 			repo, err := repo.mapToExternalType(dir)
 			if err != nil {
-				return nil, errors.New(fmt.Sprintf("$.workspace.repositories[%d] error %s", i, err.Error()))
+				return nil, fmt.Errorf("$.workspace.repositories[%d] error %s", i, err.Error())
 			}
 			repositories = append(repositories, repo)
 		}

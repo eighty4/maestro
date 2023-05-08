@@ -39,14 +39,11 @@ func gitSyncOptions() *git.SyncOptions {
 	dlcEnvVar := os.Getenv("MAESTRO_DETAIL_LOCAL_CHANGES")
 	syncOptions := &git.SyncOptions{}
 	if len(dlcEnvVar) > 0 {
-		switch dlcEnvVar {
-		case "true":
+		if dlcEnvVar == "true" {
 			syncOptions.DetailLocalChanges = true
-			break
-		case "false":
+		} else if dlcEnvVar == "false" {
 			syncOptions.DetailLocalChanges = false
-			break
-		default:
+		} else {
 			fmt.Println("MAESTRO_DETAIL_LOCAL_CHANGES must be a true or false value")
 			os.Exit(1)
 		}

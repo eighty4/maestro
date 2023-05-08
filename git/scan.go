@@ -1,7 +1,6 @@
 package git
 
 import (
-	"errors"
 	"fmt"
 	"github.com/eighty4/maestro/util"
 	"log"
@@ -37,7 +36,7 @@ func ScanForRepositories(dir string, repoScanDepth int) []*Repository {
 					go func() {
 						repos := ScanForRepositories(subdirAbsPath, repoScanDepth-1)
 						if err != nil {
-							done <- errors.New(fmt.Sprintf("ScanForRepositories(%s, %d) error: %s", subdirAbsPath, repoScanDepth-1, err.Error()))
+							done <- fmt.Errorf("ScanForRepositories(%s, %d) error: %s", subdirAbsPath, repoScanDepth-1, err.Error())
 						} else {
 							for _, repo := range repos {
 								repo.Name = path.Join(subdirName, repo.Name)

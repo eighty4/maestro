@@ -242,7 +242,7 @@ func makePullErrorUpdate(stderr string) *PullUpdate {
 		return &PullUpdate{Status: CouldNotResolveHost, Error: pullCouldNotResolveHostMsg}
 	} else if strings.Index(stderr, pullNotRepositoryErr) == 0 {
 		return &PullUpdate{Status: NotRepository, Error: pullNotRepositoryMsg}
-	} else if strings.Index(stderr, pullRepositoryNotFoundErrPre) == 0 && strings.Index(stderr, pullRepositoryNotFoundErrPost) != -1 {
+	} else if strings.Index(stderr, pullRepositoryNotFoundErrPre) == 0 && strings.Contains(stderr, pullRepositoryNotFoundErrPost) {
 		return &PullUpdate{Status: PullRepoNotFound, Error: pullRepositoryNotFoundMsg}
 	} else if stderr[0:7] == "fatal: " {
 		return &PullUpdate{Status: PullFailed, Error: stderr[0:7]}
@@ -277,11 +277,11 @@ func RevListCommitCount(dir string, fromCommitHash string, toCommitHash string) 
 	gitCmtCountCmd.Stderr = nil
 	err := gitCmtCountCmd.Run()
 	if err != nil {
-		return -1, errors.New(fmt.Sprintf("error on 'git rev-list %s --count' (%s)", cmtRange, err.Error()))
+		return -1, fmt.Errorf("error on 'git rev-list %s --count' (%s)", cmtRange, err.Error())
 	}
 	commitCount, err := parseRevListCommitCount(stdout.String())
 	if err != nil {
-		return -1, errors.New(fmt.Sprintf("atoi error on 'git rev-list %s --count' output (%s)", cmtRange, err.Error()))
+		return -1, fmt.Errorf("atoi error on 'git rev-list %s --count' output (%s)", cmtRange, err.Error())
 	} else {
 		return commitCount, nil
 	}
@@ -295,7 +295,7 @@ func StashList(dir string) ([]*StashedChangeset, error) {
 	gitStashListCmd.Stderr = nil
 	err := gitStashListCmd.Run()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error on 'git stash list' (%s)", err.Error()))
+		return nil, fmt.Errorf("error on 'git stash list' (%s)", err.Error())
 	}
 	stdout := strings.TrimSpace(stdoutBuf.String())
 	if len(stdout) == 0 {
@@ -398,7 +398,7 @@ func getPulledCommitCount(dir string, gitPullStdout string) (int, error) {
 func parsePulledCommitRange(gitPullStdout string) (string, string, error) {
 	regex, err := regexp.Compile(`Updating ([a-z\d]+)\.\.([a-z\d]+)`)
 	if err != nil {
-		return "", "", errors.New(fmt.Sprintf("err creating regex for git pull commit hashes (%s)", err.Error()))
+		return "", "", fmt.Errorf("err creating regex for git pull commit hashes (%s)", err.Error())
 	}
 	firstLine := gitPullStdout[:strings.Index(gitPullStdout, "\n")]
 	matches := regex.FindStringSubmatch(firstLine)

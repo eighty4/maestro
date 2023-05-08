@@ -16,7 +16,7 @@ type Repository struct {
 	Git *RemoteDetails
 }
 
-const urlPattern = `^(git@|https:\/\/)(github.com)(:|\/)(.+)\/(.+)\.git$`
+// todo validate git repo url: const urlPattern = `^(git@|https:\/\/)(github.com)(:|\/)(.+)\/(.+)\.git$`
 
 // RemoteDetails contains git program details for a Repository.
 type RemoteDetails struct {

@@ -14,6 +14,7 @@ jobs:
       - build
       - fmt
       - tidy
+      - lint
       - test
     steps:
       - run: echo "I can't believe the grass is green"
@@ -94,6 +95,26 @@ jobs:
           go fmt .
       - name: diff
         run: git diff --exit-code
+
+  lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.5
+      - name: install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin
+      - name: lint maestro
+        run: golangci-lint run
+      - name: lint composable
+        run: golangci-lint run composable
+      - name: lint git
+        run: golangci-lint run git
+      - name: lint testutil
+        run: golangci-lint run testutil
+      - name: lint util
+        run: golangci-lint run util
 
   tidy:
     runs-on: ubuntu-22.04
