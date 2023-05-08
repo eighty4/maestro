@@ -1,5 +1,5 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/eighty4/maestro.svg)](https://pkg.go.dev/github.com/eighty4/maestro)
-[![CI](https://img.shields.io/github/actions/workflow/status/eighty4/maestro/test.yml)](https://github.com/eighty4/maestro/actions/workflows/test.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/eighty4/maestro/verify.yml)](https://github.com/eighty4/maestro/actions/workflows/verify.yml)
 
 # Maestro
 
