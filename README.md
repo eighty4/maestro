@@ -7,7 +7,9 @@ A developer utility.
 
 ## Installing
 
-Use Go 1.19 or later, and run `go install github.com/eighty4/maestro@latest`.
+* MacOS/Linux users can run: `curl -fsSL https://raw.githubusercontent.com/eighty4/maestro/main/install.sh | sh`
+* Prebuilt binaries are available for the [latest release](https://github.com/eighty4/maestro/releases/latest)
+* Use Go 1.19 or later, and run `go install github.com/eighty4/maestro@latest`
 
 Run `maestro` to verify install succeeded.
 
