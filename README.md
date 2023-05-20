@@ -11,7 +11,7 @@ Prebuilt binaries are available [here on GitHub](https://github.com/eighty4/maes
 
 Linux and Mac users can run
 ```bash
-curl -fsSL https://eighty4.github.io/maestro/install.sh | sh
+curl -fsSL https://maestro.eighty4.tech/install.sh | sh
 ```
 
 With Go 1.19 or later, you can install from source
