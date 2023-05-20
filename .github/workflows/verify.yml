@@ -5,6 +5,10 @@ on:
     branches: [ main ]
     paths-ignore:
       - 'www/**/*'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**/*'
   pull_request:
     branches: [ main ]
   workflow_call:
