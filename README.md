@@ -18,7 +18,7 @@ Run `maestro` to verify install succeeded.
 Keep your workspace in sync with the `maestro git` command. This command performs a `git pull --ff-only` in each
 repository found nested within two subdirectories deep from the current working directory.
 
-![maestro git](git.svg)
+![maestro git](www/git.svg)
 
 A `maestro.yaml` file allows repositories to be configured, enabling a `maestro git` command to also clone repositories
 not already present in the workspace. Eventually this feature could be used to enable an export/import workflow with a

@@ -1,0 +1,16 @@
+{
+  "short_name": "maestro.eighty4.tech",
+  "name": "maestro.eighty4.tech",
+  "icons": [
+    {
+      "src": "/84-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/84-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
