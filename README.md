@@ -7,11 +7,17 @@ A developer utility.
 
 ## Installing
 
-Linux and Mac users can run `curl -fsSL https://eighty4.github.io/maestro/install.sh | sh`
-
 Prebuilt binaries are available [here on GitHub](https://github.com/eighty4/maestro/releases/latest)
 
-With Go 1.19 or later, `go install github.com/eighty4/maestro@latest` will install from source
+Linux and Mac users can run
+```bash
+curl -fsSL https://eighty4.github.io/maestro/install.sh | sh
+```
+
+With Go 1.19 or later, you can install from source
+```bash
+go install github.com/eighty4/maestro@latest
+```
 
 ## Syncing with `maestro git`
 
