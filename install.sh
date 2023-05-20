@@ -51,6 +51,7 @@ elif which wget >/dev/null 2>&1; then
 else
   use_go_install "unable to download binary"
 fi
+chmod +x "$install_dir/maestro"
 
 if ! grep .maestro/bin "$HOME/$shell_profile" >/dev/null 2>&1; then
   { echo ""; echo "# added by https://raw.githubusercontent.com/eighty4/maestro/main/install.sh"; } >> "$HOME/$shell_profile"
