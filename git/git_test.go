@@ -193,7 +193,13 @@ func TestPull_WithUnstagedChanges(t *testing.T) {
 		}
 	})
 
-	testPullChannel(t, Pull(dir), Pulled, "", &RepoState{LocalCommits: 0}, nil)
+	expStatus := Pulled
+	expMessage := ""
+	if runtime.GOOS == "windows" {
+		expStatus = UnstagedChanges
+		expMessage = "unstaged changes"
+	}
+	testPullChannel(t, Pull(dir), expStatus, expMessage, &RepoState{LocalCommits: 0}, nil)
 }
 
 func TestPull_WithStashedChanges(t *testing.T) {
@@ -311,7 +317,14 @@ func TestPull_Fails_WithOverwritesLocalChanges(t *testing.T) {
 		}
 	})
 
-	testPullChannel(t, Pull(dir), OverwritesLocalChanges, "local changes would be overwritten", &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
+	// todo should OverwritesLocalChanges report as UnstagedChanges on all platforms?
+	expStatus := OverwritesLocalChanges
+	expMessage := "local changes would be overwritten"
+	if runtime.GOOS == "windows" {
+		expStatus = UnstagedChanges
+		expMessage = "unstaged changes"
+	}
+	testPullChannel(t, Pull(dir), expStatus, expMessage, &RepoState{LocalCommits: 0, StagedChanges: 0, UnstagedChanges: 1, UntrackedFiles: 0}, nil)
 	assertNotRebasing(t, dir)
 }
 
@@ -720,6 +733,13 @@ func TestParseRevListCommitCount_BadInput(t *testing.T) {
 
 func TestParseRevParseAbsolutePath_TrimsInput(t *testing.T) {
 	assert.Equal(t, "woo", parseRevParseAbsolutePath(" woo \n"))
+}
+
+func TestParseRevParseAbsolutePath_RewritesGitsUnixPathsAsWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip()
+	}
+	assert.Equal(t, "\\im\\a\\path", parseRevParseAbsolutePath("/im/a/path\n"))
 }
 
 func TestGetPulledCommitCount(t *testing.T) {

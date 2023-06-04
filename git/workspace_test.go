@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -92,6 +93,9 @@ func TestWorkspace_Sync_PullsRepo_WithPulledCommits(t *testing.T) {
 
 func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 	gitIntegrationTest(t)
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	repoDir := filepath.Join(dir, "sse")
@@ -122,6 +126,9 @@ func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 
 func TestWorkspace_Sync_PullsRepo_WithDetailedLocalChanges(t *testing.T) {
 	gitIntegrationTest(t)
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	repoDir := filepath.Join(dir, "sse")

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -419,5 +420,8 @@ func parseRevListCommitCount(gitRevListStdout string) (int, error) {
 }
 
 func parseRevParseAbsolutePath(gitRevParseStdout string) string {
+	if runtime.GOOS == "windows" {
+		gitRevParseStdout = strings.ReplaceAll(gitRevParseStdout, "/", "\\")
+	}
 	return strings.TrimSpace(gitRevParseStdout)
 }
