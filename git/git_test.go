@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -58,7 +58,7 @@ func TestClone_IntoNewDir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	c := Clone(path.Join(dir, "sse"), "https://github.com/eighty4/sse")
+	c := Clone(filepath.Join(dir, "sse"), "https://github.com/eighty4/sse")
 	testCloneChannel(t, c, Cloned, "")
 }
 
@@ -520,7 +520,7 @@ func TestRevParseShowTopLevel_Subdir(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 	testutil.InitRepo(t, dir)
-	subdir := path.Join(dir, "foo")
+	subdir := filepath.Join(dir, "foo")
 	testutil.MkDir(t, subdir)
 
 	result, err := RevParseShowTopLevel(subdir)

@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -32,7 +31,7 @@ func MkDir(t *testing.T, dir string) {
 }
 
 func MkFile(t *testing.T, dir string, filename string) {
-	file, err := os.OpenFile(path.Join(dir, filename), os.O_RDONLY|os.O_CREATE, os.FileMode(0777))
+	file, err := os.OpenFile(filepath.Join(dir, filename), os.O_RDONLY|os.O_CREATE, os.FileMode(0777))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +55,7 @@ func OpenFileForOverwriting(t *testing.T, dir string, filename string, fn func(f
 }
 
 func openFileWithCallback(t *testing.T, dir string, filename string, flag int, fn func(f *os.File)) {
-	if f, err := os.OpenFile(path.Join(dir, filename), flag, 0600); err != nil {
+	if f, err := os.OpenFile(filepath.Join(dir, filename), flag, 0600); err != nil {
 		t.Fatal(err)
 	} else {
 		defer func(f *os.File) {

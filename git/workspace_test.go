@@ -4,7 +4,7 @@ import (
 	"github.com/eighty4/maestro/testutil"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -18,7 +18,7 @@ func TestNewWorkspace_WithoutRepoScan(t *testing.T) {
 func TestNewWorkspace_WithRepoScan(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "repo")
+	repoDir := filepath.Join(dir, "repo")
 	testutil.MkDirAndInitRepo(t, repoDir)
 
 	var repos []*Repository
@@ -34,7 +34,7 @@ func TestWorkspace_Sync_ClonesRepo(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	repos := []*Repository{NewRepository("sse", path.Join(dir, "sse"), "https://github.com/eighty4/sse")}
+	repos := []*Repository{NewRepository("sse", filepath.Join(dir, "sse"), "https://github.com/eighty4/sse")}
 	work := NewWorkspace(dir, repos, 0)
 	c := work.Sync(nil)
 	update, ok := <-c
@@ -53,7 +53,7 @@ func TestWorkspace_Sync_ClonesRepo_Failure(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	repos := []*Repository{NewRepository("sse", path.Join(dir, "sse"), "https://github.com/asdgsadgasdgasgasdg")}
+	repos := []*Repository{NewRepository("sse", filepath.Join(dir, "sse"), "https://github.com/asdgsadgasdgasgasdg")}
 	work := NewWorkspace(dir, repos, 0)
 	c := work.Sync(nil)
 	update, ok := <-c
@@ -72,7 +72,7 @@ func TestWorkspace_Sync_PullsRepo_WithPulledCommits(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "sse")
+	repoDir := filepath.Join(dir, "sse")
 	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
 	testutil.ResetHard(t, repoDir, 2)
 
@@ -94,7 +94,7 @@ func TestWorkspace_Sync_PullsRepo_WithLocalChanges(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "sse")
+	repoDir := filepath.Join(dir, "sse")
 	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
 	testutil.CommitNewFile(t, repoDir, "file1")
 	testutil.OpenFileForOverwriting(t, repoDir, "LICENSE", func(f *os.File) {
@@ -124,7 +124,7 @@ func TestWorkspace_Sync_PullsRepo_WithDetailedLocalChanges(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "sse")
+	repoDir := filepath.Join(dir, "sse")
 	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
 	testutil.CommitNewFile(t, repoDir, "file1")
 	testutil.OpenFileForOverwriting(t, repoDir, "LICENSE", func(f *os.File) {
@@ -154,7 +154,7 @@ func TestWorkspace_Sync_PullsRepo_WithStashedChanges(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "sse")
+	repoDir := filepath.Join(dir, "sse")
 	testutil.CloneRepo(t, repoDir, "https://github.com/eighty4/sse")
 	testutil.MkFile(t, repoDir, "stashed_file")
 	testutil.GitAdd(t, repoDir, "stashed_file")
@@ -178,7 +178,7 @@ func TestWorkspace_Sync_PullsRepo_Failure(t *testing.T) {
 	gitIntegrationTest(t)
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
-	repoDir := path.Join(dir, "sse")
+	repoDir := filepath.Join(dir, "sse")
 	testutil.MkDir(t, repoDir)
 	testutil.InitRepo(t, repoDir)
 

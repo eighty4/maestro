@@ -6,7 +6,7 @@ import (
 	"github.com/eighty4/maestro/git"
 	"gopkg.in/yaml.v3"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 type Config struct {
@@ -47,7 +47,7 @@ func (r *repository) mapToExternalType(parentDir string) (*git.Repository, error
 			}
 		}
 	}
-	repoDir := path.Join(parentDir, repoPath)
+	repoDir := filepath.Join(parentDir, repoPath)
 	et := &git.Repository{
 		Name: repoName,
 		Dir:  repoDir,
@@ -58,7 +58,7 @@ func (r *repository) mapToExternalType(parentDir string) (*git.Repository, error
 
 func parseConfig(dir string) (*Config, error) {
 	for _, filename := range []string{"maestro.yaml", "maestro.yml"} {
-		if content, err := os.ReadFile(path.Join(dir, filename)); err != nil {
+		if content, err := os.ReadFile(filepath.Join(dir, filename)); err != nil {
 			if os.IsNotExist(err) {
 				continue
 			} else {

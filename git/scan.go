@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"sync"
 )
 
@@ -26,7 +26,7 @@ func ScanForRepositories(dir string, repoScanDepth int) []*Repository {
 		wg.Add(len(directories))
 
 		for _, subdirName := range directories {
-			subdirAbsPath := path.Join(dir, subdirName)
+			subdirAbsPath := filepath.Join(dir, subdirName)
 			subdirName := subdirName
 			go func() {
 				if isGitRepoRootDir(subdirAbsPath) {
@@ -39,7 +39,7 @@ func ScanForRepositories(dir string, repoScanDepth int) []*Repository {
 							done <- fmt.Errorf("ScanForRepositories(%s, %d) error: %s", subdirAbsPath, repoScanDepth-1, err.Error())
 						} else {
 							for _, repo := range repos {
-								repo.Name = path.Join(subdirName, repo.Name)
+								repo.Name = filepath.Join(subdirName, repo.Name)
 								c <- repo
 							}
 						}

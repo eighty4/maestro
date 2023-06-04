@@ -5,7 +5,7 @@ import (
 	"github.com/eighty4/maestro/testutil"
 	"github.com/eighty4/maestro/util"
 	"github.com/stretchr/testify/assert"
-	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -54,7 +54,7 @@ workspace:
 	assert.Len(t, c.Repositories, 1)
 	repo := c.Repositories[0]
 	assert.Equal(t, "todai", repo.Name)
-	assert.Equal(t, path.Join(util.Cwd(), "apps/todai"), repo.Dir)
+	assert.Equal(t, filepath.Join(util.Cwd(), "apps/todai"), repo.Dir)
 	assert.Equal(t, "git@github.com:eighty4/todai", repo.Git.Url)
 }
 
@@ -93,7 +93,7 @@ func TestRepositoryMapToExternalType_OmitName_UsesRelativePath(t *testing.T) {
 	result, err := r.mapToExternalType(util.Cwd())
 	assert.Nil(t, err)
 	assert.Equal(t, "apps/todai", result.Name)
-	assert.Equal(t, path.Join(util.Cwd(), "apps/todai"), result.Dir)
+	assert.Equal(t, filepath.Join(util.Cwd(), "apps/todai"), result.Dir)
 }
 
 func TestRepositoryMapToExternalType_OmitNameAndPath_UsesGitUrl(t *testing.T) {
@@ -105,7 +105,7 @@ func TestRepositoryMapToExternalType_OmitNameAndPath_UsesGitUrl(t *testing.T) {
 	result, err := r.mapToExternalType(util.Cwd())
 	assert.Nil(t, err)
 	assert.Equal(t, "todai", result.Name)
-	assert.Equal(t, path.Join(util.Cwd(), "todai"), result.Dir)
+	assert.Equal(t, filepath.Join(util.Cwd(), "todai"), result.Dir)
 }
 
 func TestRepositoryMapToExternalType_OmitGit_ReturnsError(t *testing.T) {
