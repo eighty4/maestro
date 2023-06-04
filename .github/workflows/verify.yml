@@ -8,7 +8,6 @@ on:
       - 'README.md'
       - 'LICENSE'
       - '.gitignore'
-      - '.github/**/*'
   pull_request:
     branches: [ main ]
   workflow_call:
@@ -23,6 +22,7 @@ jobs:
       - tidy
       - lint
       - test
+      - test-windows
     steps:
       - run: echo "I can't believe the grass is green"
 
@@ -74,6 +74,45 @@ jobs:
           MAESTRO_CI: true
           MAESTRO_TEST_GIT: true
         run: go list -f '{{.Dir}}' -m | xargs go test
+
+  test-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.5
+      - name: test
+        shell: powershell
+        run: |
+          $env:TMP="$env:USERPROFILE\AppData\Local\Temp"
+          $env:TEMP="$env:TMP"
+          go test
+          Exit $LASTEXITCODE
+      - name: test composable
+        shell: powershell
+        working-directory: composable
+        run: |
+          $env:TMP="$env:USERPROFILE\AppData\Local\Temp"
+          $env:TEMP="$env:TMP"
+          go test
+          Exit $LASTEXITCODE
+      - name: test git
+        shell: powershell
+        working-directory: git
+        run: |
+          $env:TMP="$env:USERPROFILE\AppData\Local\Temp"
+          $env:TEMP="$env:TMP"
+          go test
+          Exit $LASTEXITCODE
+      - name: test util
+        shell: powershell
+        working-directory: util
+        run: |
+          $env:TMP="$env:USERPROFILE\AppData\Local\Temp"
+          $env:TEMP="$env:TMP"
+          go test
+          Exit $LASTEXITCODE
 
   fmt:
     runs-on: ubuntu-22.04
