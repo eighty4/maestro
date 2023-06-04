@@ -40,7 +40,7 @@ func (r *repository) mapToExternalType(parentDir string) (*git.Repository, error
 	if repoName == "" {
 		repoName = repoPath
 		for {
-			if repoName[0] == '.' || repoName[0] == os.PathSeparator {
+			if repoName[0] == '.' || repoName[0] == '/' || repoName[0] == '\\' {
 				repoName = repoName[1:]
 			} else {
 				break
