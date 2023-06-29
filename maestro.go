@@ -30,8 +30,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "git" {
 		gitSync(cfg)
 	} else {
-		println("run 'maestro git' to perform a sync of your local workspace")
-		os.Exit(1)
+		lsCommands()
 	}
 }
 

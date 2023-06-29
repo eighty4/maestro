@@ -3,6 +3,7 @@ module github.com/eighty4/maestro
 go 1.19
 
 require (
+	github.com/eighty4/maestro/composable v0.0.0-20230629213803-30c000b2f963
 	github.com/eighty4/maestro/git v0.0.0-20230202223313-0b83ddcd289b
 	github.com/eighty4/maestro/testutil v0.0.0-20230202223313-0b83ddcd289b
 	github.com/eighty4/maestro/util v0.0.0-20230202223313-0b83ddcd289b

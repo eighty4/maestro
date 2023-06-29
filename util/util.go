@@ -27,6 +27,11 @@ func IsDir(path string) bool {
 	return err == nil && stat.IsDir()
 }
 
+func IsFile(path string) bool {
+	stat, err := os.Stat(path)
+	return err == nil && stat.Size() > 0
+}
+
 func Seconds(n int8) time.Duration {
 	return Duration(time.Second, n)
 }

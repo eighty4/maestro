@@ -1,6 +1,8 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/eighty4/maestro/composable v0.0.0-20230629213803-30c000b2f963 h1:g6DxlA+LKyp8+hq4N5AnXmsC+TMoE4RAtOt6HAN1B7M=
+github.com/eighty4/maestro/composable v0.0.0-20230629213803-30c000b2f963/go.mod h1:8OWCJpu+Jrvk7ilq39IQyCJhmc6nF7XjLha6km6v6D4=
 github.com/eighty4/maestro/git v0.0.0-20230202223313-0b83ddcd289b h1:xtM48+UU7hPVLQ3NcYMW7plX0ykXjQULZVLOVUdgjcc=
 github.com/eighty4/maestro/git v0.0.0-20230202223313-0b83ddcd289b/go.mod h1:ndRIHxT2xa83znqQl1lLXKoDEb2NZXo+flCZB/GpNjs=
 github.com/eighty4/maestro/testutil v0.0.0-20230202223313-0b83ddcd289b h1:zGWcJu18tPQhytf7+ZdRLk1QMiSb16WBMCuHmM7W4p8=
