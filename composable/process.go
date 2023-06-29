@@ -102,7 +102,7 @@ func (p *Process) isCancelledCmdError(err error) bool {
 	if p.Status == ProcessStopped {
 		switch runtime.GOOS {
 		case "windows":
-			log.Fatalln("[ERROR] Process.isCancelledCmdError unsupported on Windows")
+			return true
 		default:
 			return err.Error() == "signal: killed"
 		}
