@@ -45,7 +45,7 @@ install_dir="$HOME/.maestro/bin"
 mkdir -p "$install_dir"
 url="https://github.com/eighty4/maestro/releases/download/$latest_version/maestro-$os_platform-$cpu_architecture"
 if which curl >/dev/null 2>&1; then
-  curl -s "$url" -o "$install_dir/maestro"
+  curl -Ls "$url" -o "$install_dir/maestro"
 elif which wget >/dev/null 2>&1; then
   wget -q -O "$install_dir/maestro" -o /dev/null "$url"
 else
