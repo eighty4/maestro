@@ -60,7 +60,7 @@ fi
 chmod +x "$install_dir/maestro"
 
 if ! grep .maestro/bin "$HOME/$shell_profile" >/dev/null 2>&1; then
-  { echo ""; echo "# added by https://raw.githubusercontent.com/eighty4/maestro/main/install.sh"; } >> "$HOME/$shell_profile"
+  { echo ""; echo "# added by https://maestro.eighty4.tech/install.sh"; } >> "$HOME/$shell_profile"
   echo "PATH=\"\$PATH:$install_dir"\" >> "$HOME/$shell_profile"
 fi
 
