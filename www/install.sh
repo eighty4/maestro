@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -e
 
 releases_url="https://api.github.com/repos/eighty4/maestro/releases/latest"
 releases_response=""
@@ -40,9 +41,14 @@ else
   use_go_install "shell $SHELL is not supported. visit https://github.com/eighty4/maestro/issues to submit a PR."
 fi
 
-# download binary
-install_dir="$HOME/.maestro/bin"
+rel_install_dir=".maestro/bin"
+if [ "$os_platform" = "linux" ]; then
+  rel_install_dir=".config/maestro/bin"
+fi
+install_dir=$HOME/$rel_install_dir
 mkdir -p "$install_dir"
+
+# download binary
 url="https://github.com/eighty4/maestro/releases/download/$latest_version/maestro-$os_platform-$cpu_architecture"
 if which curl >/dev/null 2>&1; then
   curl -Ls "$url" -o "$install_dir/maestro"
@@ -59,7 +65,7 @@ if ! grep .maestro/bin "$HOME/$shell_profile" >/dev/null 2>&1; then
 fi
 
 checkmark="\033[1;38;5;41m\0342\0234\0224\033[m"
-echo "$checkmark binary installed at \033[1m~/.maestro/bin/maestro\033[m"
+echo "$checkmark binary installed at \033[1m~/$rel_install_dir\033[m"
 echo "$checkmark \033[1m~/$shell_profile\033[m now adds maestro to PATH"
 echo ""
 echo "run these commands to verify install:"
