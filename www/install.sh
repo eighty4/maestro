@@ -33,7 +33,7 @@ esac
 
 shell_profile=""
 if [ -z "$BASH_VERSION" ]; then
-  shell_profile=".bash_profile"
+  shell_profile=".profile"
 elif [ -z "$ZSH_VERSION" ]; then
   shell_profile=".zprofile"
 else
