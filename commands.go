@@ -13,7 +13,8 @@ import (
 type CommandType string
 
 const (
-	NpmScript CommandType = "NpmScript"
+	CargoCommand CommandType = "Rust"
+	NpmScript    CommandType = "Npm"
 )
 
 type Package struct {
@@ -26,6 +27,25 @@ type Command struct {
 	desc    string
 	name    string
 	process func() *composable.Process
+}
+
+func findCargoCommands(dir string) []Command {
+	cargoTomlPath := filepath.Join(dir, "Cargo.toml")
+	if !util.IsFile(cargoTomlPath) {
+		return nil
+	}
+	var cmds []Command
+	for _, cmd := range []string{"test", "run"} {
+		cmd := cmd
+		cmds = append(cmds, Command{
+			desc: cmd,
+			name: cmd,
+			process: func() *composable.Process {
+				return composable.NewProcess("echo", []string{cmd}, dir)
+			},
+		})
+	}
+	return cmds
 }
 
 func findNpmScripts(dir string) []Command {
@@ -65,15 +85,23 @@ func findNpmScripts(dir string) []Command {
 func lsCommands() {
 	cwd := util.Cwd()
 	cmds := make(map[CommandType][]Command)
+	cmds[CargoCommand] = findCargoCommands(cwd)
 	cmds[NpmScript] = findNpmScripts(cwd)
 	pkg := Package{
 		commands: cmds,
 		dir:      cwd,
-		name:     cwd,
+		name:     filepath.Base(cwd),
+	}
+	if len(pkg.commands[CargoCommand]) > 0 {
+		fmt.Printf("/%s/Cargo.toml\n", pkg.name)
+		for _, cargoCommand := range pkg.commands[CargoCommand] {
+			fmt.Printf(" %s\n", cargoCommand.name)
+		}
 	}
 	if len(pkg.commands[NpmScript]) > 0 {
+		fmt.Printf("/%s/package.json\n", pkg.name)
 		for _, npmScript := range pkg.commands[NpmScript] {
-			fmt.Printf("%s (%s)\n", npmScript.name, npmScript.desc)
+			fmt.Printf(" %s\n", npmScript.name)
 		}
 	}
 }
