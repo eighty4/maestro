@@ -47,6 +47,9 @@ func findNpmScripts(dir string) []Command {
 	}
 	var cmds []Command
 	for script := range scripts {
+		if len(script) > 3 && script[:3] == "pre" {
+			continue
+		}
 		cmds = append(cmds, Command{
 			desc: scripts[script].(string),
 			name: script,
