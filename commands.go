@@ -8,13 +8,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 type CommandType string
 
 const (
-	CargoCommand CommandType = "Rust"
-	NpmScript    CommandType = "Npm"
+	CargoCommand  CommandType = "Rust"
+	DockerCompose CommandType = "DockerCompose"
+	NpmScript     CommandType = "Npm"
 )
 
 type Package struct {
@@ -42,6 +44,36 @@ func findCargoCommands(dir string) []Command {
 			name: cmd,
 			process: func() *composable.Process {
 				return composable.NewProcess("echo", []string{cmd}, dir)
+			},
+		})
+	}
+	return cmds
+}
+
+func findDockerCompose(dir string) []Command {
+	regex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	files, err := os.ReadDir(dir)
+	var dockerComposeFiles []string
+	if err != nil {
+		log.Fatalln(err)
+	} else {
+		for _, file := range files {
+			if !file.IsDir() && regex.Match([]byte(file.Name())) {
+				dockerComposeFiles = append(dockerComposeFiles, file.Name())
+			}
+		}
+	}
+	var cmds []Command
+	for _, dockerComposeFile := range dockerComposeFiles {
+		dockerComposeFile := dockerComposeFile
+		cmds = append(cmds, Command{
+			desc: "docker compose up -d -f " + dockerComposeFile,
+			name: dockerComposeFile,
+			process: func() *composable.Process {
+				return composable.NewProcess("docker", []string{"compose", "up", "-d", "-f", dockerComposeFile}, dir)
 			},
 		})
 	}
@@ -86,6 +118,7 @@ func lsCommands() {
 	cwd := util.Cwd()
 	cmds := make(map[CommandType][]Command)
 	cmds[CargoCommand] = findCargoCommands(cwd)
+	cmds[DockerCompose] = findDockerCompose(cwd)
 	cmds[NpmScript] = findNpmScripts(cwd)
 	pkg := Package{
 		commands: cmds,
@@ -96,6 +129,12 @@ func lsCommands() {
 		fmt.Printf("/%s/Cargo.toml\n", pkg.name)
 		for _, cargoCommand := range pkg.commands[CargoCommand] {
 			fmt.Printf(" %s\n", cargoCommand.name)
+		}
+	}
+	if len(pkg.commands[DockerCompose]) > 0 {
+		for _, dockerCompose := range pkg.commands[DockerCompose] {
+			fmt.Printf("/%s/%s\n", pkg.name, dockerCompose.name)
+			fmt.Println(" up")
 		}
 	}
 	if len(pkg.commands[NpmScript]) > 0 {
