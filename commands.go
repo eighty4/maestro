@@ -98,7 +98,13 @@ func findNpmScripts(dir string) []Command {
 	if err = json.Unmarshal(packageJsonString, &packageJsonMap); err != nil {
 		log.Fatalln(err)
 	}
-	scripts := packageJsonMap["scripts"].(map[string]interface{})
+	if packageJsonMap["scripts"] == nil {
+		return nil
+	}
+	scripts, ok := packageJsonMap["scripts"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
 	if len(scripts) < 1 {
 		return nil
 	}
