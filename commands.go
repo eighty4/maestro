@@ -16,18 +16,8 @@ import (
 	"sync"
 )
 
-type CommandType string
-
-const (
-	CargoCommand     CommandType = "Rust"
-	DockerCompose    CommandType = "DockerCompose"
-	NpmScript        CommandType = "Npm"
-	SpringBootGradle CommandType = "SpringBootGradle"
-	SpringBootMaven  CommandType = "SpringBootMaven"
-)
-
 type Package struct {
-	commands map[CommandType][]Command
+	commands []Command
 	dir      string
 	name     string
 }
@@ -47,10 +37,10 @@ func findCargoCommands(dir string) []Command {
 	for _, cmd := range []string{"test", "run"} {
 		cmd := cmd
 		cmds = append(cmds, Command{
-			desc: cmd,
-			name: cmd,
+			desc: "cargo " + cmd,
+			name: "cargo:" + cmd,
 			process: func() *composable.Process {
-				return composable.NewProcess("echo", []string{cmd}, dir)
+				return composable.NewProcess("cargo", []string{cmd}, dir)
 			},
 		})
 	}
@@ -58,7 +48,11 @@ func findCargoCommands(dir string) []Command {
 }
 
 func findDockerCompose(dir string) []Command {
-	regex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
+	customFileNameRegex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defaultFileNameRegex, err := regexp.Compile(`^docker-compose\.ya?ml$`)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -68,7 +62,7 @@ func findDockerCompose(dir string) []Command {
 		log.Fatalln(err)
 	} else {
 		for _, file := range files {
-			if !file.IsDir() && regex.Match([]byte(file.Name())) {
+			if !file.IsDir() && customFileNameRegex.MatchString(file.Name()) {
 				dockerComposeFiles = append(dockerComposeFiles, file.Name())
 			}
 		}
@@ -76,9 +70,13 @@ func findDockerCompose(dir string) []Command {
 	var cmds []Command
 	for _, dockerComposeFile := range dockerComposeFiles {
 		dockerComposeFile := dockerComposeFile
+		desc := "docker compose up"
+		if !defaultFileNameRegex.MatchString(dockerComposeFile) {
+			desc = desc + " -f " + dockerComposeFile
+		}
 		cmds = append(cmds, Command{
-			desc: "docker compose up -d -f " + dockerComposeFile,
-			name: dockerComposeFile,
+			desc: desc,
+			name: "docker:compose:" + dockerComposeFile,
 			process: func() *composable.Process {
 				return composable.NewProcess("docker", []string{"compose", "up", "-d", "-f", dockerComposeFile}, dir)
 			},
@@ -111,16 +109,16 @@ func findNpmScripts(dir string) []Command {
 		return nil
 	}
 	var cmds []Command
-	for script := range scripts {
-		if len(script) > 3 && script[:3] == "pre" {
+	for scriptName := range scripts {
+		if len(scriptName) > 3 && scriptName[:3] == "pre" {
 			continue
 		}
 		cmds = append(cmds, Command{
-			desc: scripts[script].(string),
-			name: script,
+			desc: "npm run " + scriptName,
+			name: "npm:run:" + scriptName,
 			process: func() *composable.Process {
 				// todo resolve pnpm, yarn?
-				return composable.NewProcess("npm", []string{"run", script}, dir)
+				return composable.NewProcess("npm", []string{"run", scriptName}, dir)
 			},
 		})
 	}
@@ -152,8 +150,8 @@ func findSpringBootGradle(dir string) []Command {
 		}
 	}
 	return []Command{{
-		name: "Gradle Spring Boot run",
-		desc: "Gradle Spring Boot run",
+		desc: filepath.Base(gradleBin) + " bootRun",
+		name: "gradle:spring-boot:run",
 		process: func() *composable.Process {
 			return composable.NewProcess(gradleBin, []string{"bootRun"}, dir)
 		},
@@ -208,24 +206,24 @@ func findSpringBootMaven(dir string) []Command {
 			mavenBin = mvnwCmdBin
 		}
 	} else {
-		mvnwBin := filepath.Join(dir, "gradlew")
+		mvnwBin := filepath.Join(dir, "mvnw")
 		if util.IsFile(mvnwBin) {
 			mavenBin = mvnwBin
 		}
 	}
 	return []Command{{
-		name: "Maven Spring Boot run",
-		desc: "Maven Spring Boot run",
+		name: "maven:spring-boot:run",
+		desc: filepath.Base(mavenBin) + " spring-boot:run",
 		process: func() *composable.Process {
 			return composable.NewProcess(mavenBin, []string{"spring-boot:run"}, dir)
 		},
 	}}
 }
 
-func ScanForPackages(rootDir string, packageScanDepth int) []Package {
+func ScanForPackages(rootDir string, packageScanDepth int) ([]Package, error) {
 	log.Printf("[TRACE] ScanForPackages(\"%s\", %d)\n", rootDir, packageScanDepth)
 	dirs := append(util.Subdirectories(rootDir, packageScanDepth), rootDir)
-	done := make(chan interface{})
+	done := make(chan error)
 	c := make(chan Package)
 	wg := sync.WaitGroup{}
 	wg.Add(len(dirs))
@@ -236,25 +234,25 @@ func ScanForPackages(rootDir string, packageScanDepth int) []Package {
 			name := ""
 			if len(rootDir) != len(dir) {
 				if rel, err := filepath.Rel(rootDir, dir); err != nil {
-					log.Fatalln(err)
+					done <- err
 				} else {
 					name += rel
 				}
 			}
-			cmdMap := make(map[CommandType][]Command)
-			cmdMap[CargoCommand] = findCargoCommands(dir)
-			cmdMap[DockerCompose] = findDockerCompose(dir)
-			cmdMap[NpmScript] = findNpmScripts(dir)
-			cmdMap[SpringBootGradle] = findSpringBootGradle(dir)
-			cmdMap[SpringBootMaven] = findSpringBootMaven(dir)
-			for _, cmds := range cmdMap {
-				if len(cmds) > 0 {
-					c <- Package{
-						commands: cmdMap,
-						dir:      dir,
-						name:     name,
-					}
-					break
+			var cmds []Command
+			cmds = append(cmds, findCargoCommands(dir)...)
+			cmds = append(cmds, findDockerCompose(dir)...)
+			cmds = append(cmds, findNpmScripts(dir)...)
+			cmds = append(cmds, findSpringBootGradle(dir)...)
+			cmds = append(cmds, findSpringBootMaven(dir)...)
+			sort.Slice(cmds, func(i, j int) bool {
+				return cmds[i].name < cmds[j].name
+			})
+			if len(cmds) > 0 {
+				c <- Package{
+					commands: cmds,
+					dir:      dir,
+					name:     name,
 				}
 			}
 			wg.Done()
@@ -272,54 +270,34 @@ func ScanForPackages(rootDir string, packageScanDepth int) []Package {
 		case p := <-c:
 			result = append(result, p)
 			break
-		case <-done:
+		case err := <-done:
 			close(c)
 			close(done)
+			if err != nil {
+				return nil, err
+			}
 			log.Printf("[DEBUG] ScanForPackages(\"%s\", %d) found %d %s\n", rootDir, packageScanDepth, len(result), util.PluralPrint("package", len(result)))
 			sort.Slice(result, func(i, j int) bool {
 				return result[i].name == "" || result[i].name < result[j].name
 			})
-			return result
+			return result, nil
 		}
 	}
 }
 
 func lsCommands() {
-	packages := ScanForPackages(util.Cwd(), 2)
+	packages, err := ScanForPackages(util.Cwd(), 2)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 	for _, pkg := range packages {
 		pad := ""
 		if pkg.name != "" {
 			pad = " "
 			fmt.Println(pkg.name)
 		}
-		if len(pkg.commands[CargoCommand]) > 0 {
-			for _, cargoCommand := range pkg.commands[CargoCommand] {
-				fmt.Printf("%scargo %s\n", pad, cargoCommand.name)
-			}
-		}
-		if len(pkg.commands[DockerCompose]) > 0 {
-			for _, dockerCompose := range pkg.commands[DockerCompose] {
-				if strings.Index(dockerCompose.name, "docker-compose.") == 0 {
-					fmt.Printf("%sdocker compose up\n", pad)
-				} else {
-					fmt.Printf("%sdocker compose up -f %s\n", pad, dockerCompose.name)
-				}
-			}
-		}
-		if len(pkg.commands[NpmScript]) > 0 {
-			for _, npmScript := range pkg.commands[NpmScript] {
-				fmt.Printf("%snpm run %s\n", pad, npmScript.name)
-			}
-		}
-		if len(pkg.commands[SpringBootGradle]) > 0 {
-			for range pkg.commands[SpringBootGradle] {
-				fmt.Printf("%sgradlew bootRun\n", pad)
-			}
-		}
-		if len(pkg.commands[SpringBootMaven]) > 0 {
-			for range pkg.commands[SpringBootMaven] {
-				fmt.Printf("%smvnw spring-boot:run\n", pad)
-			}
+		for _, cmd := range pkg.commands {
+			fmt.Printf("%s%s\n", pad, cmd.desc)
 		}
 	}
 }
