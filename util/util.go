@@ -3,6 +3,7 @@ package util
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -50,4 +51,21 @@ func SinglePrintIes(s string, n int) string {
 	} else {
 		return s
 	}
+}
+
+func Subdirectories(dir string, scanDepth int) []string {
+	var dirs []string
+	dirEntries, err := os.ReadDir(dir)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	for _, dirEntry := range dirEntries {
+		if dirEntry.IsDir() {
+			dirs = append(dirs, filepath.Join(dir, dirEntry.Name()))
+			if scanDepth > 1 {
+				dirs = append(dirs, Subdirectories(filepath.Join(dir, dirEntry.Name()), scanDepth-1)...)
+			}
+		}
+	}
+	return dirs
 }

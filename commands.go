@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
+	"sync"
 )
 
 type CommandType string
@@ -220,47 +222,104 @@ func findSpringBootMaven(dir string) []Command {
 	}}
 }
 
+func ScanForPackages(rootDir string, packageScanDepth int) []Package {
+	log.Printf("[TRACE] ScanForPackages(\"%s\", %d)\n", rootDir, packageScanDepth)
+	dirs := append(util.Subdirectories(rootDir, packageScanDepth), rootDir)
+	done := make(chan interface{})
+	c := make(chan Package)
+	wg := sync.WaitGroup{}
+	wg.Add(len(dirs))
+
+	for _, dir := range dirs {
+		dir := dir
+		go func() {
+			name := ""
+			if len(rootDir) != len(dir) {
+				if rel, err := filepath.Rel(rootDir, dir); err != nil {
+					log.Fatalln(err)
+				} else {
+					name += rel
+				}
+			}
+			cmdMap := make(map[CommandType][]Command)
+			cmdMap[CargoCommand] = findCargoCommands(dir)
+			cmdMap[DockerCompose] = findDockerCompose(dir)
+			cmdMap[NpmScript] = findNpmScripts(dir)
+			cmdMap[SpringBootGradle] = findSpringBootGradle(dir)
+			cmdMap[SpringBootMaven] = findSpringBootMaven(dir)
+			for _, cmds := range cmdMap {
+				if len(cmds) > 0 {
+					c <- Package{
+						commands: cmdMap,
+						dir:      dir,
+						name:     name,
+					}
+					break
+				}
+			}
+			wg.Done()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		done <- nil
+	}()
+
+	var result []Package
+	for {
+		select {
+		case p := <-c:
+			result = append(result, p)
+			break
+		case <-done:
+			close(c)
+			close(done)
+			log.Printf("[DEBUG] ScanForPackages(\"%s\", %d) found %d %s\n", rootDir, packageScanDepth, len(result), util.PluralPrint("package", len(result)))
+			sort.Slice(result, func(i, j int) bool {
+				return result[i].name == "" || result[i].name < result[j].name
+			})
+			return result
+		}
+	}
+}
+
 func lsCommands() {
-	cwd := util.Cwd()
-	cmds := make(map[CommandType][]Command)
-	cmds[CargoCommand] = findCargoCommands(cwd)
-	cmds[DockerCompose] = findDockerCompose(cwd)
-	cmds[NpmScript] = findNpmScripts(cwd)
-	cmds[SpringBootGradle] = findSpringBootGradle(cwd)
-	cmds[SpringBootMaven] = findSpringBootMaven(cwd)
-	pkg := Package{
-		commands: cmds,
-		dir:      cwd,
-		name:     filepath.Base(cwd),
-	}
-	if len(pkg.commands[CargoCommand]) > 0 {
-		fmt.Printf("/%s/Cargo.toml\n", pkg.name)
-		for _, cargoCommand := range pkg.commands[CargoCommand] {
-			fmt.Printf(" %s\n", cargoCommand.name)
+	packages := ScanForPackages(util.Cwd(), 2)
+	for _, pkg := range packages {
+		pad := ""
+		if pkg.name != "" {
+			pad = " "
+			fmt.Println(pkg.name)
 		}
-	}
-	if len(pkg.commands[DockerCompose]) > 0 {
-		for _, dockerCompose := range pkg.commands[DockerCompose] {
-			fmt.Printf("/%s/%s\n", pkg.name, dockerCompose.name)
-			fmt.Println(" up")
+		if len(pkg.commands[CargoCommand]) > 0 {
+			for _, cargoCommand := range pkg.commands[CargoCommand] {
+				fmt.Printf("%scargo %s\n", pad, cargoCommand.name)
+			}
 		}
-	}
-	if len(pkg.commands[NpmScript]) > 0 {
-		fmt.Printf("/%s/package.json\n", pkg.name)
-		for _, npmScript := range pkg.commands[NpmScript] {
-			fmt.Printf(" %s\n", npmScript.name)
+		if len(pkg.commands[DockerCompose]) > 0 {
+			for _, dockerCompose := range pkg.commands[DockerCompose] {
+				if strings.Index(dockerCompose.name, "docker-compose.") == 0 {
+					fmt.Printf("%sdocker compose up\n", pad)
+				} else {
+					fmt.Printf("%sdocker compose up -f %s\n", pad, dockerCompose.name)
+				}
+			}
 		}
-	}
-	if len(pkg.commands[SpringBootGradle]) > 0 {
-		fmt.Printf("/%s/build.gradle\n", pkg.name)
-		for range pkg.commands[SpringBootGradle] {
-			fmt.Println(" gradlew bootRun")
+		if len(pkg.commands[NpmScript]) > 0 {
+			for _, npmScript := range pkg.commands[NpmScript] {
+				fmt.Printf("%snpm run %s\n", pad, npmScript.name)
+			}
 		}
-	}
-	if len(pkg.commands[SpringBootMaven]) > 0 {
-		fmt.Printf("/%s/pom.xml\n", pkg.name)
-		for range pkg.commands[SpringBootMaven] {
-			fmt.Println(" mvnw spring-boot:run")
+		if len(pkg.commands[SpringBootGradle]) > 0 {
+			for range pkg.commands[SpringBootGradle] {
+				fmt.Printf("%sgradlew bootRun\n", pad)
+			}
+		}
+		if len(pkg.commands[SpringBootMaven]) > 0 {
+			for range pkg.commands[SpringBootMaven] {
+				fmt.Printf("%smvnw spring-boot:run\n", pad)
+			}
 		}
 	}
 }
