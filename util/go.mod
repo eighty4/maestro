@@ -3,6 +3,7 @@ module github.com/eighty4/maestro/util
 go 1.19
 
 require (
+	github.com/eighty4/maestro/testutil v0.0.0-20230712171237-d516c41d7666
 	github.com/hashicorp/logutils v1.0.0
 	github.com/stretchr/testify v1.8.1
 )
