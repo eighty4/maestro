@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"github.com/eighty4/maestro/composable"
 	"github.com/eighty4/maestro/util"
@@ -9,14 +10,18 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"strings"
 )
 
 type CommandType string
 
 const (
-	CargoCommand  CommandType = "Rust"
-	DockerCompose CommandType = "DockerCompose"
-	NpmScript     CommandType = "Npm"
+	CargoCommand     CommandType = "Rust"
+	DockerCompose    CommandType = "DockerCompose"
+	NpmScript        CommandType = "Npm"
+	SpringBootGradle CommandType = "SpringBootGradle"
+	SpringBootMaven  CommandType = "SpringBootMaven"
 )
 
 type Package struct {
@@ -114,12 +119,109 @@ func findNpmScripts(dir string) []Command {
 	return cmds
 }
 
+func findSpringBootGradle(dir string) []Command {
+	buildGradlePath := filepath.Join(dir, "build.gradle")
+	if !util.IsFile(buildGradlePath) {
+		return nil
+	}
+	buildGradle, err := os.ReadFile(buildGradlePath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if !strings.Contains(string(buildGradle), "org.springframework.boot") {
+		return nil
+	}
+	gradleBin := "gradle"
+	if runtime.GOOS == "windows" {
+		gradlewBatBin := filepath.Join(dir, "gradlew.bat")
+		if util.IsFile(gradlewBatBin) {
+			gradleBin = gradlewBatBin
+		}
+	} else {
+		gradlewBin := filepath.Join(dir, "gradlew")
+		if util.IsFile(gradlewBin) {
+			gradleBin = gradlewBin
+		}
+	}
+	return []Command{{
+		name: "Gradle Spring Boot run",
+		desc: "Gradle Spring Boot run",
+		process: func() *composable.Process {
+			return composable.NewProcess(gradleBin, []string{"bootRun"}, dir)
+		},
+	}}
+}
+
+type (
+	mavenProject struct {
+		Build *mavenBuild `xml:"build"`
+	}
+
+	mavenBuild struct {
+		Plugins *mavenPlugins `xml:"plugins"`
+	}
+
+	mavenPlugins struct {
+		Plugins []*mavenPlugin `xml:"plugin"`
+	}
+
+	mavenPlugin struct {
+		GroupId    string `xml:"groupId"`
+		ArtifactId string `xml:"artifactId"`
+	}
+)
+
+func findSpringBootMaven(dir string) []Command {
+	pomXmlPath := filepath.Join(dir, "pom.xml")
+	if !util.IsFile(pomXmlPath) {
+		return nil
+	}
+	pomXml, err := os.ReadFile(pomXmlPath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	var pom mavenProject
+	if err = xml.Unmarshal(pomXml, &pom); err != nil {
+		log.Fatalln(err)
+	}
+	springBoot := false
+	for _, plugin := range pom.Build.Plugins.Plugins {
+		if plugin.GroupId == "org.springframework.boot" && plugin.ArtifactId == "spring-boot-maven-plugin" {
+			springBoot = true
+		}
+	}
+	if !springBoot {
+		return nil
+	}
+	mavenBin := "mvn"
+	if runtime.GOOS == "windows" {
+		mvnwCmdBin := filepath.Join(dir, "mvnw.cmd")
+		if util.IsFile(mvnwCmdBin) {
+			mavenBin = mvnwCmdBin
+		}
+	} else {
+		mvnwBin := filepath.Join(dir, "gradlew")
+		if util.IsFile(mvnwBin) {
+			mavenBin = mvnwBin
+		}
+	}
+	return []Command{{
+		name: "Maven Spring Boot run",
+		desc: "Maven Spring Boot run",
+		process: func() *composable.Process {
+			return composable.NewProcess(mavenBin, []string{"spring-boot:run"}, dir)
+		},
+	}}
+}
+
 func lsCommands() {
 	cwd := util.Cwd()
 	cmds := make(map[CommandType][]Command)
 	cmds[CargoCommand] = findCargoCommands(cwd)
 	cmds[DockerCompose] = findDockerCompose(cwd)
 	cmds[NpmScript] = findNpmScripts(cwd)
+	cmds[SpringBootGradle] = findSpringBootGradle(cwd)
+	cmds[SpringBootMaven] = findSpringBootMaven(cwd)
 	pkg := Package{
 		commands: cmds,
 		dir:      cwd,
@@ -141,6 +243,18 @@ func lsCommands() {
 		fmt.Printf("/%s/package.json\n", pkg.name)
 		for _, npmScript := range pkg.commands[NpmScript] {
 			fmt.Printf(" %s\n", npmScript.name)
+		}
+	}
+	if len(pkg.commands[SpringBootGradle]) > 0 {
+		fmt.Printf("/%s/build.gradle\n", pkg.name)
+		for range pkg.commands[SpringBootGradle] {
+			fmt.Println(" gradlew bootRun")
+		}
+	}
+	if len(pkg.commands[SpringBootMaven]) > 0 {
+		fmt.Printf("/%s/pom.xml\n", pkg.name)
+		for range pkg.commands[SpringBootMaven] {
+			fmt.Println(" mvnw spring-boot:run")
 		}
 	}
 }
