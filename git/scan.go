@@ -64,7 +64,7 @@ func ScanForRepositories(dir string, repoScanDepth int) []*Repository {
 			case <-done:
 				close(c)
 				close(done)
-				log.Printf("[DEBUG] ScanForRepositories(\"%s\", %d) found %d %s\n", dir, repoScanDepth, len(repositories), util.SinglePrintIes("repositories", 1))
+				log.Printf("[DEBUG] ScanForRepositories(\"%s\", %d) found %d %s\n", dir, repoScanDepth, len(repositories), util.SinglePrintIes("repositories", len(repositories)))
 				return repositories
 			}
 		}
