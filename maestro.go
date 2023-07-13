@@ -30,7 +30,19 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "git" {
 		gitSync(cfg)
 	} else {
-		lsCommands()
+		composeMode := false
+		for _, arg := range os.Args {
+			if arg == "-c" || arg == "--compose" {
+				composeMode = true
+			}
+		}
+		if composeMode {
+			if err := composeProject(); err != nil {
+				log.Fatalln(err)
+			}
+		} else {
+			lsCommands()
+		}
 	}
 }
 

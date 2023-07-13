@@ -290,6 +290,10 @@ func lsCommands() {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+	printCommands(packages)
+}
+
+func printCommands(packages []Package) {
 	for _, pkg := range packages {
 		pad := ""
 		if pkg.name != "" {

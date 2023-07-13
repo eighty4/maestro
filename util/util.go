@@ -1,11 +1,20 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 )
+
+// ClearTermLines navigates up n number of lines and clears terminal leaving cursor on topmost cleared lined.
+func ClearTermLines(n int) {
+	for i := 0; i < n; i++ {
+		fmt.Print("\033[A")  // up 1
+		fmt.Print("\033[2K") // clear
+	}
+}
 
 func Cwd() string {
 	cwd, err := os.Getwd()
