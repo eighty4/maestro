@@ -1,6 +1,9 @@
 package composable
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // ExecDescription describes an executable process.
 type ExecDescription struct {
@@ -28,4 +31,9 @@ func ParseCmdString(cmd string, dir string) *ExecDescription {
 // Process creates an instance of Process from the ExecDescription fields.
 func (ed *ExecDescription) Process() *Process {
 	return NewProcess(ed.Binary, ed.Args, ed.Dir)
+}
+
+// ToString creates a shell command string of the ExecDescription's Binary and Args.
+func (ed *ExecDescription) ToString() string {
+	return fmt.Sprintf("%s %s", ed.Binary, strings.Join(ed.Args, " "))
 }

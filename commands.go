@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/eighty4/maestro/composable"
 	"github.com/eighty4/maestro/util"
@@ -17,37 +18,127 @@ import (
 )
 
 type Package struct {
-	commands []Command
+	commands []*Command
 	dir      string
 	name     string
 }
 
 type Command struct {
-	desc    string
-	name    string
-	process func() *composable.Process
+	Archetype string
+	Desc      string
+	Dir       string
+	Exec      *composable.ExecDescription
+	File      string
+	Id        string
+	Name      string
 }
 
-func findCargoCommands(dir string) []Command {
+type CommandOptions struct {
+	Desc string
+	Dir  string
+	Exec string
+	Id   string
+	Name string
+}
+
+func NewCommand(cmdOpts *CommandOptions) (*Command, error) {
+	if len(cmdOpts.Dir) == 0 {
+		return nil, errors.New("must specify a command dir")
+	}
+
+	if len(cmdOpts.Exec) > 0 && len(cmdOpts.Id) > 0 {
+		return nil, errors.New("should only specify an exec string or an id but not both")
+	}
+
+	if len(cmdOpts.Exec) > 0 {
+		// todo check if exec string matches a CommandArchetype with a fn of (composable.ExecDescription) => bool
+		exec := composable.ParseCmdString(cmdOpts.Exec, cmdOpts.Dir)
+		name := cmdOpts.Name
+		if len(name) == 0 {
+			name = exec.Binary
+		}
+		return &Command{
+			Desc: cmdOpts.Desc,
+			Dir:  cmdOpts.Dir,
+			Exec: exec,
+			Name: name,
+		}, nil
+	}
+
+	if len(cmdOpts.Id) > 0 {
+		cmd, err := ParseCommandId(cmdOpts.Id, cmdOpts.Dir)
+		if err != nil {
+			return nil, errors.New("error parsing command id: " + err.Error())
+		}
+		if len(cmd.Desc) == 0 {
+			cmd.Desc = cmdOpts.Desc
+		}
+		if len(cmdOpts.Name) > 0 {
+			cmd.Name = cmdOpts.Name
+		}
+		return cmd, nil
+	}
+
+	return nil, errors.New("does not specify an exec string or an id")
+}
+
+func ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
+// todo extensible configuration driven CommandArchetype impl
+// todo go.mod => go run
+// todo gradle application plugin
+// todo procfile
+// todo pubspec.yaml => dart run
+// todo CommandArchetype registry service and initialization
+type CommandArchetype interface {
+	ArchetypeId() string
+	FindCommands(dir string) []*Command
+	ParseCommandId(id string, dir string) (*Command, error)
+}
+
+type CargoCommandArchetype struct {
+}
+
+func (a *CargoCommandArchetype) ArchetypeId() string {
+	return "cargo:run"
+}
+
+func (a *CargoCommandArchetype) FindCommands(dir string) []*Command {
 	cargoTomlPath := filepath.Join(dir, "Cargo.toml")
 	if !util.IsFile(cargoTomlPath) {
 		return nil
 	}
-	var cmds []Command
-	for _, cmd := range []string{"test", "run"} {
-		cmd := cmd
-		cmds = append(cmds, Command{
-			desc: "cargo " + cmd,
-			name: "cargo:" + cmd,
-			process: func() *composable.Process {
-				return composable.NewProcess("cargo", []string{cmd}, dir)
-			},
-		})
-	}
-	return cmds
+	// todo parse Cargo.toml and create commands for each binary target
+	return []*Command{{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: "cargo",
+			Args:   []string{"run"},
+			Dir:    dir,
+		},
+		File: "Cargo.toml",
+		Id:   a.ArchetypeId(),
+		Name: "run",
+	}}
 }
 
-func findDockerCompose(dir string) []Command {
+func (a *CargoCommandArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
+type DockerComposeArchetype struct {
+}
+
+func (a *DockerComposeArchetype) ArchetypeId() string {
+	return "docker:compose"
+}
+
+func (a *DockerComposeArchetype) FindCommands(dir string) []*Command {
 	customFileNameRegex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
 	if err != nil {
 		log.Fatalln(err)
@@ -56,9 +147,8 @@ func findDockerCompose(dir string) []Command {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	files, err := os.ReadDir(dir)
 	var dockerComposeFiles []string
-	if err != nil {
+	if files, err := os.ReadDir(dir); err != nil {
 		log.Fatalln(err)
 	} else {
 		for _, file := range files {
@@ -67,25 +157,42 @@ func findDockerCompose(dir string) []Command {
 			}
 		}
 	}
-	var cmds []Command
+	var cmds []*Command
 	for _, dockerComposeFile := range dockerComposeFiles {
 		dockerComposeFile := dockerComposeFile
-		desc := "docker compose up"
+		args := []string{"compose", "up", "-d"}
 		if !defaultFileNameRegex.MatchString(dockerComposeFile) {
-			desc = desc + " -f " + dockerComposeFile
+			args = append(args, "-f", dockerComposeFile)
 		}
-		cmds = append(cmds, Command{
-			desc: desc,
-			name: "docker:compose:" + dockerComposeFile,
-			process: func() *composable.Process {
-				return composable.NewProcess("docker", []string{"compose", "up", "-d", "-f", dockerComposeFile}, dir)
+		cmds = append(cmds, &Command{
+			Archetype: a.ArchetypeId(),
+			Dir:       dir,
+			Exec: &composable.ExecDescription{
+				Binary: "docker",
+				Args:   args,
+				Dir:    dir,
 			},
+			File: dockerComposeFile,
+			Id:   a.ArchetypeId() + ":" + dockerComposeFile,
+			Name: dockerComposeFile,
 		})
 	}
 	return cmds
 }
 
-func findNpmScripts(dir string) []Command {
+func (a *DockerComposeArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
+type NpmScriptArchetype struct {
+}
+
+func (a *NpmScriptArchetype) ArchetypeId() string {
+	return "npm:run"
+}
+
+func (a *NpmScriptArchetype) FindCommands(dir string) []*Command {
 	packageJsonPath := filepath.Join(dir, "package.json")
 	if !util.IsFile(packageJsonPath) {
 		return nil
@@ -108,24 +215,41 @@ func findNpmScripts(dir string) []Command {
 	if len(scripts) < 1 {
 		return nil
 	}
-	var cmds []Command
+	var cmds []*Command
 	for scriptName := range scripts {
 		if len(scriptName) > 3 && scriptName[:3] == "pre" {
 			continue
 		}
-		cmds = append(cmds, Command{
-			desc: "npm run " + scriptName,
-			name: "npm:run:" + scriptName,
-			process: func() *composable.Process {
+		cmds = append(cmds, &Command{
+			Archetype: a.ArchetypeId(),
+			Dir:       dir,
+			Exec: &composable.ExecDescription{
 				// todo resolve pnpm, yarn?
-				return composable.NewProcess("npm", []string{"run", scriptName}, dir)
+				Binary: "npm",
+				Args:   []string{"run", scriptName},
+				Dir:    dir,
 			},
+			File: "package.json",
+			Id:   a.ArchetypeId() + ":" + scriptName,
+			Name: scriptName,
 		})
 	}
 	return cmds
 }
 
-func findSpringBootGradle(dir string) []Command {
+func (a *NpmScriptArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
+type GradleSpringBootArchetype struct {
+}
+
+func (a *GradleSpringBootArchetype) ArchetypeId() string {
+	return "gradle:spring"
+}
+
+func (a *GradleSpringBootArchetype) FindCommands(dir string) []*Command {
 	buildGradlePath := filepath.Join(dir, "build.gradle")
 	if !util.IsFile(buildGradlePath) {
 		return nil
@@ -149,16 +273,29 @@ func findSpringBootGradle(dir string) []Command {
 			gradleBin = gradlewBin
 		}
 	}
-	return []Command{{
-		desc: filepath.Base(gradleBin) + " bootRun",
-		name: "gradle:spring-boot:run",
-		process: func() *composable.Process {
-			return composable.NewProcess(gradleBin, []string{"bootRun"}, dir)
+	return []*Command{{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: gradleBin,
+			Args:   []string{"bootRun"},
+			Dir:    dir,
 		},
+		File: "build.gradle",
+		Id:   a.ArchetypeId() + ":bootRun",
+		Name: "bootRun",
 	}}
 }
 
+func (a *GradleSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
 type (
+	MavenSpringBootArchetype struct {
+	}
+
 	mavenProject struct {
 		Build *mavenBuild `xml:"build"`
 	}
@@ -177,7 +314,11 @@ type (
 	}
 )
 
-func findSpringBootMaven(dir string) []Command {
+func (a *MavenSpringBootArchetype) ArchetypeId() string {
+	return "maven:spring"
+}
+
+func (a *MavenSpringBootArchetype) FindCommands(dir string) []*Command {
 	pomXmlPath := filepath.Join(dir, "pom.xml")
 	if !util.IsFile(pomXmlPath) {
 		return nil
@@ -211,20 +352,30 @@ func findSpringBootMaven(dir string) []Command {
 			mavenBin = mvnwBin
 		}
 	}
-	return []Command{{
-		name: "maven:spring-boot:run",
-		desc: filepath.Base(mavenBin) + " spring-boot:run",
-		process: func() *composable.Process {
-			return composable.NewProcess(mavenBin, []string{"spring-boot:run"}, dir)
+	return []*Command{{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: mavenBin,
+			Args:   []string{"spring-boot:run"},
+			Dir:    dir,
 		},
+		File: "pom.xml",
+		Id:   a.ArchetypeId() + ":bootRun",
+		Name: "bootRun",
 	}}
 }
 
-func ScanForPackages(rootDir string, packageScanDepth int) ([]Package, error) {
+func (a *MavenSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	// todo implement me
+	panic("implement me")
+}
+
+func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
 	log.Printf("[TRACE] ScanForPackages(\"%s\", %d)\n", rootDir, packageScanDepth)
 	dirs := append(util.Subdirectories(rootDir, packageScanDepth), rootDir)
 	done := make(chan error)
-	c := make(chan Package)
+	c := make(chan *Package)
 	wg := sync.WaitGroup{}
 	wg.Add(len(dirs))
 
@@ -239,17 +390,22 @@ func ScanForPackages(rootDir string, packageScanDepth int) ([]Package, error) {
 					name += rel
 				}
 			}
-			var cmds []Command
-			cmds = append(cmds, findCargoCommands(dir)...)
-			cmds = append(cmds, findDockerCompose(dir)...)
-			cmds = append(cmds, findNpmScripts(dir)...)
-			cmds = append(cmds, findSpringBootGradle(dir)...)
-			cmds = append(cmds, findSpringBootMaven(dir)...)
+			var cmds []*Command
+			archetypes := []CommandArchetype{
+				&CargoCommandArchetype{},
+				&DockerComposeArchetype{},
+				&GradleSpringBootArchetype{},
+				&MavenSpringBootArchetype{},
+				&NpmScriptArchetype{},
+			}
+			for _, archetype := range archetypes {
+				cmds = append(cmds, archetype.FindCommands(dir)...)
+			}
 			sort.Slice(cmds, func(i, j int) bool {
-				return cmds[i].name < cmds[j].name
+				return cmds[i].Id < cmds[j].Id
 			})
 			if len(cmds) > 0 {
-				c <- Package{
+				c <- &Package{
 					commands: cmds,
 					dir:      dir,
 					name:     name,
@@ -264,7 +420,7 @@ func ScanForPackages(rootDir string, packageScanDepth int) ([]Package, error) {
 		done <- nil
 	}()
 
-	var result []Package
+	var result []*Package
 	for {
 		select {
 		case p := <-c:
@@ -293,7 +449,7 @@ func lsCommands() {
 	printCommands(packages)
 }
 
-func printCommands(packages []Package) {
+func printCommands(packages []*Package) {
 	for _, pkg := range packages {
 		pad := ""
 		if pkg.name != "" {
@@ -301,7 +457,7 @@ func printCommands(packages []Package) {
 			fmt.Println(pkg.name)
 		}
 		for _, cmd := range pkg.commands {
-			fmt.Printf("%s%s\n", pad, cmd.desc)
+			fmt.Printf("%s%s\n", pad, cmd.Id)
 		}
 	}
 }

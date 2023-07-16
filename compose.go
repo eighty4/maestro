@@ -23,7 +23,7 @@ func composeProject() error {
 
 type ComposeProjectJob struct {
 	workDir   string
-	packages  []Package
+	packages  []*Package
 	uiLines   int
 	curPkgI   int
 	cursorI   int
@@ -39,6 +39,9 @@ func NewComposeProjectJob() (*ComposeProjectJob, error) {
 		selected := make([][]bool, len(packages))
 		for i, p := range packages {
 			selected[i] = make([]bool, len(p.commands))
+			for _, c := range p.commands {
+				c.Desc = c.Exec.ToString()
+			}
 		}
 		return &ComposeProjectJob{
 			workDir:   util.Cwd(),
@@ -84,7 +87,7 @@ func (j *ComposeProjectJob) refreshInterface() {
 		if !j.cmdCursor && j.cursorI == pkgI {
 			arrow = "→"
 		}
-		lines = append(lines, fmt.Sprintf("%s %s %s", diamond, arrow, j.packagePrependProjectName(&pkg)))
+		lines = append(lines, fmt.Sprintf("%s %s %s", diamond, arrow, j.packagePrependProjectName(pkg)))
 		if pkgI != j.curPkgI {
 			continue
 		}
@@ -97,7 +100,7 @@ func (j *ComposeProjectJob) refreshInterface() {
 			if j.selected[j.curPkgI][cmdIndex] {
 				circle = "●"
 			}
-			lines = append(lines, fmt.Sprintf("|  %s %s %s", arrow, circle, cmd.desc))
+			lines = append(lines, fmt.Sprintf("|  %s %s %s", arrow, circle, cmd.Desc))
 		}
 	}
 	padLines := j.uiLines - len(lines) - 1
@@ -261,22 +264,27 @@ func (j *ComposeProjectJob) handleSpaceKey() {
 func (j *ComposeProjectJob) completeJob() {
 	result := j.collectSelectedCommands()
 	util.ClearTermLines(j.uiLines + 2)
-	up := NewUnicodePrinting()
-	fmt.Printf("┌ Selected %d packages for Maestro to orchestrate:\n|\n", len(result))
-	for _, pkg := range result {
-		fmt.Printf("|   %s\n", j.packagePrependProjectName(&pkg))
-		for _, cmd := range pkg.commands {
-			fmt.Printf("|    %s %s\n", up.greenCheck, cmd.desc)
+	if len(result) == 0 {
+		fmt.Println("┌ You did not select any commands!\n|")
+		fmt.Println("└ Maestro is exiting without making any changes.")
+	} else {
+		up := NewUnicodePrinting()
+		fmt.Printf("┌ Selected %d %s for Maestro to orchestrate:\n|\n", len(result), util.PluralPrint("package", len(result)))
+		for _, pkg := range result {
+			fmt.Printf("|   %s\n", j.packagePrependProjectName(&pkg))
+			for _, cmd := range pkg.commands {
+				fmt.Printf("|    %s %s\n", up.greenCheck, cmd.Desc)
+			}
 		}
+		fmt.Print("|\n└ This composition was written to ./maestro.yml. Run `maestro` to continue.\n")
 	}
-	fmt.Print("|\n└ This composition was written to ./maestro.yml. Run `maestro` to continue.\n")
 	j.doneC <- nil
 }
 
 func (j *ComposeProjectJob) collectSelectedCommands() []Package {
 	var result []Package
 	for pkgI, pkg := range j.packages {
-		var commands []Command
+		var commands []*Command
 		for cmdI, selected := range j.selected[pkgI] {
 			if selected {
 				commands = append(commands, pkg.commands[cmdI])
