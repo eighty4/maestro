@@ -4,31 +4,52 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eighty4/maestro/git"
+	"github.com/eighty4/maestro/util"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 )
 
 type Config struct {
+	Dir          string
 	Filename     string
+	Packages     []*Package
 	Repositories []*git.Repository
 }
 
 type config struct {
-	Workspace *workspace
+	Project   *configProject
+	Workspace *configWorkspace
 }
 
-type workspace struct {
-	Repositories []*repository
+type configProject struct {
+	Packages []*configPackage
 }
 
-type repository struct {
+type configPackage struct {
+	Name     string
+	Path     string
+	Commands []*configCommand
+}
+
+type configCommand struct {
+	Desc string
+	Exec string
+	Id   string
+	Name string
+}
+
+type configWorkspace struct {
+	Repositories []*configRepository
+}
+
+type configRepository struct {
 	Name string
 	Path string
 	Git  *git.RemoteDetails
 }
 
-func (r *repository) mapToExternalType(parentDir string) (*git.Repository, error) {
+func (r *configRepository) mapToExternalType(parentDir string) (*git.Repository, error) {
 	if r.Git == nil || r.Git.Url == "" {
 		return nil, errors.New("missing git.url")
 	}
@@ -38,14 +59,7 @@ func (r *repository) mapToExternalType(parentDir string) (*git.Repository, error
 		repoPath = git.RepoNameFromUrl(r.Git.Url)
 	}
 	if repoName == "" {
-		repoName = repoPath
-		for {
-			if repoName[0] == '.' || repoName[0] == '/' || repoName[0] == '\\' {
-				repoName = repoName[1:]
-			} else {
-				break
-			}
-		}
+		repoName = util.TrimRelativePathPrefix(repoPath)
 	}
 	repoDir := filepath.Join(parentDir, repoPath)
 	et := &git.Repository{
@@ -85,15 +99,55 @@ func parseConfigBytes(dir string, bytes []byte) (*Config, error) {
 		return nil, err
 	}
 
-	var repositories []*git.Repository
-	if c.Workspace != nil {
-		for i, repo := range c.Workspace.Repositories {
-			repo, err := repo.mapToExternalType(dir)
-			if err != nil {
-				return nil, fmt.Errorf("$.workspace.repositories[%d] error %s", i, err.Error())
+	var packages []*Package
+	if c.Project != nil {
+		for cfgPkgI, cfgPkg := range c.Project.Packages {
+			if len(cfgPkg.Path) == 0 {
+				return nil, fmt.Errorf("$.project.packages[%d] missing path", cfgPkgI)
 			}
-			repositories = append(repositories, repo)
+			pkgDir := filepath.Join(dir, cfgPkg.Path)
+			if !util.IsDir(pkgDir) {
+				return nil, fmt.Errorf("$.project.packages[%d] uses non-existing path %s", cfgPkgI, cfgPkg.Path)
+			}
+			if len(cfgPkg.Commands) == 0 {
+				return nil, fmt.Errorf("$.project.packages[%d] missing configured commands", cfgPkgI)
+			}
+			var commands []*Command
+			for cfgCmdI, cfgCmd := range cfgPkg.Commands {
+				command, err := NewCommand(&CommandOptions{
+					Desc: cfgCmd.Desc,
+					Dir:  pkgDir,
+					Exec: cfgCmd.Exec,
+					Id:   cfgCmd.Id,
+					Name: cfgCmd.Name,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("$.project.packages[%d].commands[%d] %s", cfgPkgI, cfgCmdI, err.Error())
+				} else {
+					commands = append(commands, command)
+				}
+			}
+			name := cfgPkg.Name
+			if len(name) == 0 {
+				name = util.TrimRelativePathPrefix(cfgPkg.Path)
+			}
+			packages = append(packages, &Package{
+				dir:      pkgDir,
+				name:     name,
+				commands: commands,
+			})
 		}
 	}
-	return &Config{Repositories: repositories}, nil
+
+	var repositories []*git.Repository
+	if c.Workspace != nil {
+		for i, r := range c.Workspace.Repositories {
+			if repo, err := r.mapToExternalType(dir); err != nil {
+				return nil, fmt.Errorf("$.workspace.repositories[%d] %s", i, err.Error())
+			} else {
+				repositories = append(repositories, repo)
+			}
+		}
+	}
+	return &Config{Packages: packages, Repositories: repositories}, nil
 }

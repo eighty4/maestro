@@ -78,3 +78,14 @@ func Subdirectories(dir string, scanDepth int) []string {
 	}
 	return dirs
 }
+
+// TrimRelativePathPrefix will remove the first character of a string until all relative path prefix chars have been trimmed.
+func TrimRelativePathPrefix(p string) string {
+	for {
+		if len(p) != 0 && (p[0] == '.' || p[0] == '/' || p[0] == '\\') {
+			p = p[1:]
+		} else {
+			return p
+		}
+	}
+}

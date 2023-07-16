@@ -83,8 +83,29 @@ func NewCommand(cmdOpts *CommandOptions) (*Command, error) {
 }
 
 func ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	archetypes := []CommandArchetype{
+		&CargoCommandArchetype{},
+		&DockerComposeArchetype{},
+		&GradleSpringBootArchetype{},
+		&MavenSpringBootArchetype{},
+		&NpmScriptArchetype{},
+	}
+	archetypeId := id[:strings.Index(id, ":")]
+	for _, archetype := range archetypes {
+		if !checkArchetypeId(id, archetype) {
+			continue
+		}
+		if command, err := archetype.ParseCommandId(id, dir); err != nil {
+			return nil, err
+		} else if command != nil {
+			return command, nil
+		}
+	}
+	return nil, errors.New("unable to match archetype id " + archetypeId)
+}
+
+func checkArchetypeId(id string, archetype CommandArchetype) bool {
+	return strings.Index(id, archetype.ArchetypeId()) == 0
 }
 
 // todo extensible configuration driven CommandArchetype impl
@@ -103,7 +124,7 @@ type CargoCommandArchetype struct {
 }
 
 func (a *CargoCommandArchetype) ArchetypeId() string {
-	return "cargo:run"
+	return "cargo.run"
 }
 
 func (a *CargoCommandArchetype) FindCommands(dir string) []*Command {
@@ -112,7 +133,18 @@ func (a *CargoCommandArchetype) FindCommands(dir string) []*Command {
 		return nil
 	}
 	// todo parse Cargo.toml and create commands for each binary target
-	return []*Command{{
+	return []*Command{a.createCommand(dir)}
+}
+
+func (a *CargoCommandArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	if !checkArchetypeId(id, a) {
+		return nil, errors.New("bad id for archetype")
+	}
+	return a.createCommand(dir), nil
+}
+
+func (a *CargoCommandArchetype) createCommand(dir string) *Command {
+	return &Command{
 		Archetype: a.ArchetypeId(),
 		Dir:       dir,
 		Exec: &composable.ExecDescription{
@@ -123,73 +155,66 @@ func (a *CargoCommandArchetype) FindCommands(dir string) []*Command {
 		File: "Cargo.toml",
 		Id:   a.ArchetypeId(),
 		Name: "run",
-	}}
-}
-
-func (a *CargoCommandArchetype) ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	}
 }
 
 type DockerComposeArchetype struct {
 }
 
 func (a *DockerComposeArchetype) ArchetypeId() string {
-	return "docker:compose"
+	return "docker.compose"
 }
 
 func (a *DockerComposeArchetype) FindCommands(dir string) []*Command {
-	customFileNameRegex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
+	dockerComposeFileRegex, err := regexp.Compile(`^(?:.+)?docker-compose(?:.+)?\.ya?ml$`)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defaultFileNameRegex, err := regexp.Compile(`^docker-compose\.ya?ml$`)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	var dockerComposeFiles []string
+	var cmds []*Command
 	if files, err := os.ReadDir(dir); err != nil {
 		log.Fatalln(err)
 	} else {
 		for _, file := range files {
-			if !file.IsDir() && customFileNameRegex.MatchString(file.Name()) {
-				dockerComposeFiles = append(dockerComposeFiles, file.Name())
+			if !file.IsDir() && dockerComposeFileRegex.MatchString(file.Name()) {
+				cmds = append(cmds, a.createCommand(dir, file.Name()))
 			}
 		}
-	}
-	var cmds []*Command
-	for _, dockerComposeFile := range dockerComposeFiles {
-		dockerComposeFile := dockerComposeFile
-		args := []string{"compose", "up", "-d"}
-		if !defaultFileNameRegex.MatchString(dockerComposeFile) {
-			args = append(args, "-f", dockerComposeFile)
-		}
-		cmds = append(cmds, &Command{
-			Archetype: a.ArchetypeId(),
-			Dir:       dir,
-			Exec: &composable.ExecDescription{
-				Binary: "docker",
-				Args:   args,
-				Dir:    dir,
-			},
-			File: dockerComposeFile,
-			Id:   a.ArchetypeId() + ":" + dockerComposeFile,
-			Name: dockerComposeFile,
-		})
 	}
 	return cmds
 }
 
 func (a *DockerComposeArchetype) ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	if !checkArchetypeId(id, a) {
+		return nil, errors.New("bad id for archetype")
+	}
+	dockerComposeFile := id[:strings.Index(id, ":")+1]
+	return a.createCommand(dir, dockerComposeFile), nil
+}
+
+func (a *DockerComposeArchetype) createCommand(dir string, dockerComposeFile string) *Command {
+	args := []string{"compose", "up"}
+	if dockerComposeFile != "docker-compose.yml" && dockerComposeFile != "docker-compose.yaml" {
+		args = append(args, "-f", dockerComposeFile)
+	}
+	return &Command{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: "docker",
+			Args:   args,
+			Dir:    dir,
+		},
+		File: dockerComposeFile,
+		Id:   a.ArchetypeId() + ":" + dockerComposeFile,
+		Name: dockerComposeFile,
+	}
 }
 
 type NpmScriptArchetype struct {
 }
 
 func (a *NpmScriptArchetype) ArchetypeId() string {
-	return "npm:run"
+	return "npm.run"
 }
 
 func (a *NpmScriptArchetype) FindCommands(dir string) []*Command {
@@ -220,33 +245,40 @@ func (a *NpmScriptArchetype) FindCommands(dir string) []*Command {
 		if len(scriptName) > 3 && scriptName[:3] == "pre" {
 			continue
 		}
-		cmds = append(cmds, &Command{
-			Archetype: a.ArchetypeId(),
-			Dir:       dir,
-			Exec: &composable.ExecDescription{
-				// todo resolve pnpm, yarn?
-				Binary: "npm",
-				Args:   []string{"run", scriptName},
-				Dir:    dir,
-			},
-			File: "package.json",
-			Id:   a.ArchetypeId() + ":" + scriptName,
-			Name: scriptName,
-		})
+		cmds = append(cmds, a.createCommand(dir, scriptName))
 	}
 	return cmds
 }
 
 func (a *NpmScriptArchetype) ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	if !checkArchetypeId(id, a) {
+		return nil, errors.New("bad id for archetype")
+	}
+	script := id[strings.Index(id, ":")+1:]
+	return a.createCommand(dir, script), nil
+}
+
+func (a *NpmScriptArchetype) createCommand(dir string, script string) *Command {
+	return &Command{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			// todo resolve pnpm, yarn?
+			Binary: "npm",
+			Args:   []string{"run", script},
+			Dir:    dir,
+		},
+		File: "package.json",
+		Id:   a.ArchetypeId() + ":" + script,
+		Name: script,
+	}
 }
 
 type GradleSpringBootArchetype struct {
 }
 
 func (a *GradleSpringBootArchetype) ArchetypeId() string {
-	return "gradle:spring"
+	return "gradle.spring"
 }
 
 func (a *GradleSpringBootArchetype) FindCommands(dir string) []*Command {
@@ -261,6 +293,32 @@ func (a *GradleSpringBootArchetype) FindCommands(dir string) []*Command {
 	if !strings.Contains(string(buildGradle), "org.springframework.boot") {
 		return nil
 	}
+	return []*Command{a.createCommand(dir)}
+}
+
+func (a *GradleSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	if !checkArchetypeId(id, a) {
+		return nil, errors.New("bad id for archetype")
+	}
+	return a.createCommand(dir), nil
+}
+
+func (a *GradleSpringBootArchetype) createCommand(dir string) *Command {
+	return &Command{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: a.resolveGradleBin(dir),
+			Args:   []string{"bootRun"},
+			Dir:    dir,
+		},
+		File: "build.gradle",
+		Id:   a.ArchetypeId() + ":bootRun",
+		Name: "bootRun",
+	}
+}
+
+func (a *GradleSpringBootArchetype) resolveGradleBin(dir string) string {
 	gradleBin := "gradle"
 	if runtime.GOOS == "windows" {
 		gradlewBatBin := filepath.Join(dir, "gradlew.bat")
@@ -273,23 +331,7 @@ func (a *GradleSpringBootArchetype) FindCommands(dir string) []*Command {
 			gradleBin = gradlewBin
 		}
 	}
-	return []*Command{{
-		Archetype: a.ArchetypeId(),
-		Dir:       dir,
-		Exec: &composable.ExecDescription{
-			Binary: gradleBin,
-			Args:   []string{"bootRun"},
-			Dir:    dir,
-		},
-		File: "build.gradle",
-		Id:   a.ArchetypeId() + ":bootRun",
-		Name: "bootRun",
-	}}
-}
-
-func (a *GradleSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	return gradleBin
 }
 
 type (
@@ -315,7 +357,7 @@ type (
 )
 
 func (a *MavenSpringBootArchetype) ArchetypeId() string {
-	return "maven:spring"
+	return "maven.spring"
 }
 
 func (a *MavenSpringBootArchetype) FindCommands(dir string) []*Command {
@@ -340,6 +382,32 @@ func (a *MavenSpringBootArchetype) FindCommands(dir string) []*Command {
 	if !springBoot {
 		return nil
 	}
+	return []*Command{a.createCommand(dir)}
+}
+
+func (a *MavenSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
+	if !checkArchetypeId(id, a) {
+		return nil, errors.New("bad id for archetype")
+	}
+	return a.createCommand(dir), nil
+}
+
+func (a *MavenSpringBootArchetype) createCommand(dir string) *Command {
+	return &Command{
+		Archetype: a.ArchetypeId(),
+		Dir:       dir,
+		Exec: &composable.ExecDescription{
+			Binary: a.resolveMavenBin(dir),
+			Args:   []string{"spring-boot:run"},
+			Dir:    dir,
+		},
+		File: "pom.xml",
+		Id:   a.ArchetypeId() + ":bootRun",
+		Name: "bootRun",
+	}
+}
+
+func (a *MavenSpringBootArchetype) resolveMavenBin(dir string) string {
 	mavenBin := "mvn"
 	if runtime.GOOS == "windows" {
 		mvnwCmdBin := filepath.Join(dir, "mvnw.cmd")
@@ -352,23 +420,7 @@ func (a *MavenSpringBootArchetype) FindCommands(dir string) []*Command {
 			mavenBin = mvnwBin
 		}
 	}
-	return []*Command{{
-		Archetype: a.ArchetypeId(),
-		Dir:       dir,
-		Exec: &composable.ExecDescription{
-			Binary: mavenBin,
-			Args:   []string{"spring-boot:run"},
-			Dir:    dir,
-		},
-		File: "pom.xml",
-		Id:   a.ArchetypeId() + ":bootRun",
-		Name: "bootRun",
-	}}
-}
-
-func (a *MavenSpringBootArchetype) ParseCommandId(id string, dir string) (*Command, error) {
-	// todo implement me
-	panic("implement me")
+	return mavenBin
 }
 
 func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
