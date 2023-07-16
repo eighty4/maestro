@@ -17,7 +17,7 @@ func main() {
 	}
 	util.InitLogging()
 
-	cfg, err := parseConfig(util.Cwd())
+	cfg, err := parseConfigFile(util.Cwd())
 	if err != nil {
 		println("config error:\n  " + err.Error())
 		os.Exit(1)
@@ -37,11 +37,11 @@ func main() {
 			}
 		}
 		if composeMode {
-			if err := composeProject(); err != nil {
+			if err := composeProject(cfg); err != nil {
 				log.Fatalln(err)
 			}
 		} else {
-			lsCommands()
+			lsCommands(cfg)
 		}
 	}
 }
@@ -69,7 +69,7 @@ func gitSync(cfg *Config) {
 	if cfg != nil {
 		repositories = cfg.Repositories
 	}
-	ws := git.NewWorkspace(util.Cwd(), repositories, 2)
+	ws := git.NewWorkspace(cfg.Dir, repositories, 2)
 
 	if len(ws.Repositories) == 0 {
 		fmt.Println("No repositories found in this directory to sync.")

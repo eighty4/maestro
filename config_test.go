@@ -14,9 +14,12 @@ func TestParseConfig_CreatesConfig_WithYamlExtension(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.WriteContentToFile(t, dir, "maestro.yaml", "---\n")
 
-	c, err := parseConfig(dir)
+	c, err := parseConfigFile(dir)
 	assert.Nil(t, err)
 	assert.NotNil(t, c)
+	assert.Equal(t, dir, c.Dir)
+	assert.Equal(t, true, c.FileExists)
+	assert.Equal(t, "maestro.yaml", c.Filename)
 }
 
 func TestParseConfig_CreatesConfig_WithYmlExtension(t *testing.T) {
@@ -24,18 +27,27 @@ func TestParseConfig_CreatesConfig_WithYmlExtension(t *testing.T) {
 	defer testutil.RmDir(t, dir)
 	testutil.WriteContentToFile(t, dir, "maestro.yml", "---\n")
 
-	c, err := parseConfig(dir)
+	c, err := parseConfigFile(dir)
 	assert.Nil(t, err)
 	assert.NotNil(t, c)
+	assert.Equal(t, dir, c.Dir)
+	assert.Equal(t, true, c.FileExists)
+	assert.Equal(t, "maestro.yml", c.Filename)
 }
 
 func TestParseConfig_ReturnsNilNil_WithMissingConfigFile(t *testing.T) {
 	dir := testutil.MkTmpDir(t)
 	defer testutil.RmDir(t, dir)
 
-	c, err := parseConfig(dir)
-	assert.Nil(t, c)
+	c, err := parseConfigFile(dir)
 	assert.Nil(t, err)
+	assert.NotNil(t, c)
+
+	assert.Equal(t, dir, c.Dir)
+	assert.Equal(t, false, c.FileExists)
+	assert.Equal(t, "", c.Filename)
+	assert.Len(t, c.Packages, 0)
+	assert.Len(t, c.Repositories, 0)
 }
 
 func TestParseProjectConfigText(t *testing.T) {
@@ -58,9 +70,12 @@ project:
         - id: npm.run:dev
           name: dev
 `
-	c, err := parseConfigBytes(dir, []byte(configText))
+	c, err := parseConfigBytes(dir, "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, err)
+	assert.Equal(t, dir, c.Dir)
+	assert.Equal(t, true, c.FileExists)
+	assert.Equal(t, "maestro.yaml", c.Filename)
 	assert.Len(t, c.Packages, 2)
 	assert.Len(t, c.Repositories, 0)
 
@@ -99,7 +114,7 @@ project:
       commands:
         - exec: cargo run 
 `
-	c, err := parseConfigBytes(dir, []byte(configText))
+	c, err := parseConfigBytes(dir, "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -115,7 +130,7 @@ project:
       commands:
         - exec: cargo run 
 `
-	c, err := parseConfigBytes(util.Cwd(), []byte(configText))
+	c, err := parseConfigBytes(util.Cwd(), "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -134,7 +149,7 @@ project:
       commands:
         - name: foo
 `
-	c, err := parseConfigBytes(dir, []byte(configText))
+	c, err := parseConfigBytes(dir, "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -152,7 +167,7 @@ project:
     - path: api
       commands:
 `
-	c, err := parseConfigBytes(dir, []byte(configText))
+	c, err := parseConfigBytes(dir, "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -169,9 +184,12 @@ workspace:
       git:
         url: git@github.com:eighty4/todai
 `
-	c, err := parseConfigBytes(util.Cwd(), []byte(configText))
+	c, err := parseConfigBytes(util.Cwd(), "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, err)
+	assert.Equal(t, util.Cwd(), c.Dir)
+	assert.Equal(t, true, c.FileExists)
+	assert.Equal(t, "maestro.yaml", c.Filename)
 	assert.Len(t, c.Packages, 0)
 	assert.Len(t, c.Repositories, 1)
 	repo := c.Repositories[0]
@@ -188,7 +206,7 @@ workspace:
     - name: todai
       path: apps/todai
 `
-	c, err := parseConfigBytes(util.Cwd(), []byte(configText))
+	c, err := parseConfigBytes(util.Cwd(), "maestro.yaml", []byte(configText))
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)

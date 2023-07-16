@@ -487,8 +487,8 @@ func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
 	}
 }
 
-func lsCommands() {
-	packages, err := ScanForPackages(util.Cwd(), 2)
+func lsCommands(cfg *Config) {
+	packages, err := ScanForPackages(cfg.Dir, 2)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}

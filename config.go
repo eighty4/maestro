@@ -12,6 +12,7 @@ import (
 
 type Config struct {
 	Dir          string
+	FileExists   bool
 	Filename     string
 	Packages     []*Package
 	Repositories []*git.Repository
@@ -70,7 +71,7 @@ func (r *configRepository) mapToExternalType(parentDir string) (*git.Repository,
 	return et, nil
 }
 
-func parseConfig(dir string) (*Config, error) {
+func parseConfigFile(dir string) (*Config, error) {
 	for _, filename := range []string{"maestro.yaml", "maestro.yml"} {
 		if content, err := os.ReadFile(filepath.Join(dir, filename)); err != nil {
 			if os.IsNotExist(err) {
@@ -79,21 +80,13 @@ func parseConfig(dir string) (*Config, error) {
 				return nil, err
 			}
 		} else {
-			return parseConfigFile(dir, filename, content)
+			return parseConfigBytes(dir, filename, content)
 		}
 	}
-	return nil, nil
+	return &Config{Dir: dir, FileExists: false}, nil
 }
 
-func parseConfigFile(dir string, filename string, content []byte) (*Config, error) {
-	c, err := parseConfigBytes(dir, content)
-	if c != nil {
-		c.Filename = filename
-	}
-	return c, err
-}
-
-func parseConfigBytes(dir string, bytes []byte) (*Config, error) {
+func parseConfigBytes(dir string, filename string, bytes []byte) (*Config, error) {
 	var c config
 	if err := yaml.Unmarshal(bytes, &c); err != nil {
 		return nil, err
@@ -149,5 +142,12 @@ func parseConfigBytes(dir string, bytes []byte) (*Config, error) {
 			}
 		}
 	}
-	return &Config{Packages: packages, Repositories: repositories}, nil
+
+	return &Config{
+		Dir:          dir,
+		FileExists:   true,
+		Filename:     filename,
+		Packages:     packages,
+		Repositories: repositories,
+	}, nil
 }

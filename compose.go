@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 )
 
-func composeProject() error {
-	j, err := NewComposeProjectJob()
+func composeProject(cfg *Config) error {
+	j, err := NewComposeProjectJob(cfg)
 	if err != nil {
 		return err
 	}
@@ -32,8 +32,8 @@ type ComposeProjectJob struct {
 	doneC     chan error
 }
 
-func NewComposeProjectJob() (*ComposeProjectJob, error) {
-	if packages, err := ScanForPackages(util.Cwd(), 2); err != nil {
+func NewComposeProjectJob(cfg *Config) (*ComposeProjectJob, error) {
+	if packages, err := ScanForPackages(cfg.Dir, 2); err != nil {
 		return nil, err
 	} else {
 		selected := make([][]bool, len(packages))
@@ -44,7 +44,7 @@ func NewComposeProjectJob() (*ComposeProjectJob, error) {
 			}
 		}
 		return &ComposeProjectJob{
-			workDir:   util.Cwd(),
+			workDir:   cfg.Dir,
 			packages:  packages,
 			uiLines:   0,
 			curPkgI:   0,
