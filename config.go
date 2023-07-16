@@ -18,9 +18,32 @@ type Config struct {
 	Repositories []*git.Repository
 }
 
+func (c *Config) AddPackages(packages []*Package) {
+	c.Packages = append(c.Packages, packages...)
+}
+
+func (c *Config) SaveConfig() error {
+	cy, err := convertConfigToYamlModel(c)
+	if err != nil {
+		return err
+	}
+	bytes, err := yaml.Marshal(cy)
+	if err != nil {
+		return err
+	}
+	filename := "maestro.yaml"
+	err = util.WriteFile(filepath.Join(c.Dir, filename), bytes)
+	if err != nil {
+		return err
+	}
+	c.FileExists = true
+	c.Filename = filename
+	return nil
+}
+
 type config struct {
-	Project   *configProject
-	Workspace *configWorkspace
+	Project   *configProject   `yaml:"project,omitempty"`
+	Workspace *configWorkspace `yaml:"workspace,omitempty"`
 }
 
 type configProject struct {
@@ -28,16 +51,16 @@ type configProject struct {
 }
 
 type configPackage struct {
-	Name     string
-	Path     string
-	Commands []*configCommand
+	Name     string           `yaml:"name,omitempty"`
+	Path     string           `yaml:"path,omitempty"`
+	Commands []*configCommand `yaml:"commands,omitempty"`
 }
 
 type configCommand struct {
-	Desc string
-	Exec string
-	Id   string
-	Name string
+	Desc string `yaml:"desc,omitempty"`
+	Exec string `yaml:"exec,omitempty"`
+	Id   string `yaml:"id,omitempty"`
+	Name string `yaml:"name,omitempty"`
 }
 
 type configWorkspace struct {
@@ -45,9 +68,72 @@ type configWorkspace struct {
 }
 
 type configRepository struct {
-	Name string
-	Path string
+	Name string `yaml:"name,omitempty"`
+	Path string `yaml:"path,omitempty"`
 	Git  *git.RemoteDetails
+}
+
+func convertConfigToYamlModel(c *Config) (*config, error) {
+	py, err := convertPackagesToYamlModel(c.Dir, c.Packages)
+	if err != nil {
+		return nil, err
+	}
+	wy, err := convertRepositoriesToYamlModel(c.Dir, c.Repositories)
+	if err != nil {
+		return nil, err
+	}
+	cy := &config{Project: py, Workspace: wy}
+	return cy, nil
+}
+
+func convertPackagesToYamlModel(rootDir string, packages []*Package) (*configProject, error) {
+	if len(packages) == 0 {
+		return nil, nil
+	}
+	result := &configProject{}
+	for _, pkg := range packages {
+		path, err := filepath.Rel(rootDir, pkg.dir)
+		if err != nil {
+			return nil, err
+		}
+		var cmds []*configCommand
+		for _, cmd := range pkg.commands {
+			cmds = append(cmds, &configCommand{
+				Desc: cmd.Desc,
+				Id:   cmd.Id,
+				Name: cmd.Name,
+			})
+		}
+		name := pkg.name
+		if name == path {
+			name = ""
+		}
+		result.Packages = append(result.Packages, &configPackage{
+			Commands: cmds,
+			Name:     name,
+			Path:     path,
+		})
+	}
+	return result, nil
+}
+
+func convertRepositoriesToYamlModel(rootDir string, repositories []*git.Repository) (*configWorkspace, error) {
+	if len(repositories) == 0 {
+		return nil, nil
+	}
+	result := &configWorkspace{}
+	for _, repo := range repositories {
+		path, err := filepath.Rel(rootDir, repo.Dir)
+		if err != nil {
+			return nil, err
+		}
+		result.Repositories = append(result.Repositories, &configRepository{
+			Name: repo.Name,
+			Path: path,
+			Git:  repo.Git,
+		})
+	}
+	return result, nil
 }
 
 func (r *configRepository) mapToExternalType(parentDir string) (*git.Repository, error) {

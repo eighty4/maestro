@@ -90,7 +90,10 @@ func ParseCommandId(id string, dir string) (*Command, error) {
 		&MavenSpringBootArchetype{},
 		&NpmScriptArchetype{},
 	}
-	archetypeId := id[:strings.Index(id, ":")]
+	archetypeId := id
+	if archetypeIdPrefixSeperator := strings.Index(id, ":"); archetypeIdPrefixSeperator != -1 {
+		archetypeId = id[:archetypeIdPrefixSeperator]
+	}
 	for _, archetype := range archetypes {
 		if !checkArchetypeId(id, archetype) {
 			continue

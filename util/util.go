@@ -89,3 +89,20 @@ func TrimRelativePathPrefix(p string) string {
 		}
 	}
 }
+
+func WriteFile(absPath string, bytes []byte) error {
+	var f *os.File
+	var err error
+	if f, err = os.Create(absPath); err != nil {
+		return err
+	}
+	defer func(f *os.File) {
+		if err := f.Close(); err != nil {
+			log.Fatalln(err)
+		}
+	}(f)
+	if _, err = f.Write(bytes); err != nil {
+		return err
+	}
+	return f.Sync()
+}

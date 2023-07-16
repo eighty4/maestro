@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"github.com/eighty4/maestro/util"
 	"golang.org/x/term"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
 )
 
 func composeProject(cfg *Config) error {
+	// todo support merging an existing maestro config's commands into compose job
+	if cfg.FileExists {
+		return fmt.Errorf("this directory already has a %s file", cfg.Filename)
+	}
 	j, err := NewComposeProjectJob(cfg)
 	if err != nil {
 		return err
@@ -22,7 +27,7 @@ func composeProject(cfg *Config) error {
 }
 
 type ComposeProjectJob struct {
-	workDir   string
+	cfg       *Config
 	packages  []*Package
 	uiLines   int
 	curPkgI   int
@@ -44,7 +49,7 @@ func NewComposeProjectJob(cfg *Config) (*ComposeProjectJob, error) {
 			}
 		}
 		return &ComposeProjectJob{
-			workDir:   cfg.Dir,
+			cfg:       cfg,
 			packages:  packages,
 			uiLines:   0,
 			curPkgI:   0,
@@ -121,7 +126,7 @@ func (j *ComposeProjectJob) refreshInterface() {
 }
 
 func (j *ComposeProjectJob) packagePrependProjectName(pkg *Package) string {
-	return filepath.Join(filepath.Base(j.workDir), pkg.name)
+	return filepath.Join(filepath.Base(j.cfg.Dir), pkg.name)
 }
 
 type KeyCmd int
@@ -276,6 +281,18 @@ func (j *ComposeProjectJob) completeJob() {
 				fmt.Printf("|    %s %s\n", up.greenCheck, cmd.Desc)
 			}
 		}
+
+		// clear desc set for compose ui display
+		for _, pkg := range j.packages {
+			for _, cmd := range pkg.commands {
+				cmd.Desc = ""
+			}
+		}
+		j.cfg.AddPackages(j.packages)
+		if err := j.cfg.SaveConfig(); err != nil {
+			log.Fatalln(err)
+		}
+
 		fmt.Print("|\n└ This composition was written to ./maestro.yml. Run `maestro` to continue.\n")
 	}
 	j.doneC <- nil
