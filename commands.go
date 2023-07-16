@@ -319,19 +319,16 @@ func (a *GradleSpringBootArchetype) createCommand(dir string) *Command {
 }
 
 func (a *GradleSpringBootArchetype) resolveGradleBin(dir string) string {
-	gradleBin := "gradle"
 	if runtime.GOOS == "windows" {
-		gradlewBatBin := filepath.Join(dir, "gradlew.bat")
-		if util.IsFile(gradlewBatBin) {
-			gradleBin = gradlewBatBin
+		if util.IsFile(filepath.Join(dir, "gradlew.bat")) {
+			return "gradlew.bat"
 		}
 	} else {
-		gradlewBin := filepath.Join(dir, "gradlew")
-		if util.IsFile(gradlewBin) {
-			gradleBin = gradlewBin
+		if util.IsFile(filepath.Join(dir, "gradlew")) {
+			return "gradlew"
 		}
 	}
-	return gradleBin
+	return "gradle"
 }
 
 type (
@@ -408,19 +405,16 @@ func (a *MavenSpringBootArchetype) createCommand(dir string) *Command {
 }
 
 func (a *MavenSpringBootArchetype) resolveMavenBin(dir string) string {
-	mavenBin := "mvn"
 	if runtime.GOOS == "windows" {
-		mvnwCmdBin := filepath.Join(dir, "mvnw.cmd")
-		if util.IsFile(mvnwCmdBin) {
-			mavenBin = mvnwCmdBin
+		if util.IsFile(filepath.Join(dir, "mvnw.cmd")) {
+			return "mvnw.cmd"
 		}
 	} else {
-		mvnwBin := filepath.Join(dir, "mvnw")
-		if util.IsFile(mvnwBin) {
-			mavenBin = mvnwBin
+		if util.IsFile(filepath.Join(dir, "mvnw")) {
+			return "mvnw"
 		}
 	}
-	return mavenBin
+	return "mvn"
 }
 
 func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
