@@ -190,7 +190,7 @@ func (a *DockerComposeArchetype) ParseCommandId(id string, dir string) (*Command
 	if !checkArchetypeId(id, a) {
 		return nil, errors.New("bad id for archetype")
 	}
-	dockerComposeFile := id[:strings.Index(id, ":")+1]
+	dockerComposeFile := id[strings.Index(id, ":")+1:]
 	return a.createCommand(dir, dockerComposeFile), nil
 }
 
