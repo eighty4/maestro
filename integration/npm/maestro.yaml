@@ -1,0 +1,6 @@
+project:
+  packages:
+    - path: .
+      commands:
+        - id: npm.run:run
+          name: run

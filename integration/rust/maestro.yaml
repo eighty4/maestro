@@ -1,0 +1,6 @@
+project:
+  packages:
+    - path: .
+      commands:
+        - id: cargo.run
+          name: run
