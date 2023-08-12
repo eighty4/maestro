@@ -2,7 +2,7 @@ use std::io::Write;
 use std::net::{Shutdown, TcpListener};
 
 fn main() {
-    let listener = TcpListener::bind("127.0.0.1:8001").unwrap();
+    let listener = TcpListener::bind(("127.0.0.1", 8001)).unwrap();
     for stream in listener.incoming() {
         match stream {
             Ok(mut tcp_stream) => {

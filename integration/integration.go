@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -71,16 +73,32 @@ func (t *IntegrationTest) Name() string {
 }
 
 func (t *IntegrationTest) Run() bool {
-	t.maestro = exec.Command("maestro")
+	bin := "maestro"
+	if runtime.GOOS == "windows" {
+		bin = "maestro.exe"
+	}
+	t.maestro = exec.Command(bin)
 	t.maestro.Dir = t.dir
+	maestroStdout := bytes.Buffer{}
+	t.maestro.Stdout = &maestroStdout
+	maestroStderr := bytes.Buffer{}
+	t.maestro.Stderr = &maestroStderr
 	if err := t.maestro.Start(); err != nil {
 		log.Fatalf("Error starting maestro process for test %s: %s\n", t.Name(), err.Error())
 	}
-	time.Sleep(2 * time.Second)
+	// todo use healthchecks and wait for `maestro` to print the app is up and running
+	time.Sleep(time.Duration(6) * time.Second)
+	if t.maestro.ProcessState != nil && t.maestro.ProcessState.Exited() {
+		log.Fatalf("Error running maestro with early exit for test %s with exit code: %d\n", t.Name(), t.maestro.ProcessState.ExitCode())
+	}
 	t.verify = exec.Command("go", "run", "verify.go")
 	t.verify.Dir = t.dir
+	verifyStdout := bytes.Buffer{}
+	t.verify.Stdout = &verifyStdout
+	verifyStderr := bytes.Buffer{}
+	t.verify.Stderr = &verifyStderr
 	if err := t.verify.Run(); err != nil {
-		log.Fatalf("Error running verify.go process for test %s: %s\n", t.Name(), err.Error())
+		log.Fatalf("Error running verify.go process for test %s: %s\n\nmaestro STDOUT:\n%s\n\nmaestro STDERR:\n%s\n\ngo run verify.go STDOUT:\n%s\n\ngo run verify.go STDERR:\n%s\n", t.Name(), err.Error(), maestroStdout.String(), maestroStderr.String(), verifyStdout.String(), verifyStderr.String())
 	}
 	if err := t.maestro.Process.Kill(); err != nil {
 		log.Fatalf("Error killing maestro process for test %s: %s\n", t.Name(), err.Error())
