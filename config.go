@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/eighty4/maestro/git"
@@ -27,12 +28,15 @@ func (c *Config) SaveConfig() error {
 	if err != nil {
 		return err
 	}
-	bytes, err := yaml.Marshal(cy)
+	var b bytes.Buffer
+	encoder := yaml.NewEncoder(&b)
+	encoder.SetIndent(2)
+	err = encoder.Encode(cy)
 	if err != nil {
 		return err
 	}
 	filename := "maestro.yaml"
-	err = util.WriteFile(filepath.Join(c.Dir, filename), bytes)
+	err = util.WriteFile(filepath.Join(c.Dir, filename), b.Bytes())
 	if err != nil {
 		return err
 	}
