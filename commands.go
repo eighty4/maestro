@@ -83,18 +83,11 @@ func NewCommand(cmdOpts *CommandOptions) (*Command, error) {
 }
 
 func ParseCommandId(id string, dir string) (*Command, error) {
-	archetypes := []CommandArchetype{
-		&CargoCommandArchetype{},
-		&DockerComposeArchetype{},
-		&GradleSpringBootArchetype{},
-		&MavenSpringBootArchetype{},
-		&NpmScriptArchetype{},
-	}
 	archetypeId := id
 	if archetypeIdPrefixSeperator := strings.Index(id, ":"); archetypeIdPrefixSeperator != -1 {
 		archetypeId = id[:archetypeIdPrefixSeperator]
 	}
-	for _, archetype := range archetypes {
+	for _, archetype := range GetCommandArchetypes() {
 		if !checkArchetypeId(id, archetype) {
 			continue
 		}
@@ -420,6 +413,16 @@ func (a *MavenSpringBootArchetype) resolveMavenBin(dir string) string {
 	return "mvn"
 }
 
+func GetCommandArchetypes() []CommandArchetype {
+	return []CommandArchetype{
+		&CargoCommandArchetype{},
+		&DockerComposeArchetype{},
+		&GradleSpringBootArchetype{},
+		&MavenSpringBootArchetype{},
+		&NpmScriptArchetype{},
+	}
+}
+
 func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
 	log.Printf("[TRACE] ScanForPackages(\"%s\", %d)\n", rootDir, packageScanDepth)
 	dirs := append(util.Subdirectories(rootDir, packageScanDepth), rootDir)
@@ -440,14 +443,7 @@ func ScanForPackages(rootDir string, packageScanDepth int) ([]*Package, error) {
 				}
 			}
 			var cmds []*Command
-			archetypes := []CommandArchetype{
-				&CargoCommandArchetype{},
-				&DockerComposeArchetype{},
-				&GradleSpringBootArchetype{},
-				&MavenSpringBootArchetype{},
-				&NpmScriptArchetype{},
-			}
-			for _, archetype := range archetypes {
+			for _, archetype := range GetCommandArchetypes() {
 				cmds = append(cmds, archetype.FindCommands(dir)...)
 			}
 			sort.Slice(cmds, func(i, j int) bool {
