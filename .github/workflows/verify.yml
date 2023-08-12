@@ -23,6 +23,7 @@ jobs:
       - lint
       - test
       - test-windows
+      - integration-test
     steps:
       - run: echo "I can't believe the grass is green"
 
@@ -193,3 +194,21 @@ jobs:
         run: go work sync
       - name: diff
         run: git diff --exit-code
+
+  integration-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.5
+      - name: integration-test
+        run: |
+          go build
+          PATH=$PATH:$(pwd)
+          cd integration
+          go run integration.go
