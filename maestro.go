@@ -11,6 +11,15 @@ import (
 	"strconv"
 )
 
+const cmdMenu = `Maestro --better-dx
+
+  maestro                    start a project orchestration
+    -c, --compose            compose a project orchestration
+    -l, --ls                 list orchestrated commands
+
+  maestro git                sync a workspace of repositories
+    --detail-local-changes   print excessive details about repos`
+
 func main() {
 	if util.IsDebug() {
 		color.HiYellow("debug enabled")
@@ -30,20 +39,29 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "git" {
 		gitSync(cfg)
 	} else {
-		composeMode := false
-		for _, arg := range os.Args {
-			if arg == "-c" || arg == "--compose" {
-				composeMode = true
-			}
-		}
-		if composeMode {
+		if isArgSet("-c", "--compose") {
 			if err := composeProject(cfg); err != nil {
 				log.Fatalln(err)
 			}
-		} else {
+		} else if isArgSet("-l", "--ls") {
 			lsCommands(cfg)
+		} else if cfg.FileExists {
+			if err := orchestrateProject(cfg); err != nil {
+				log.Fatalln(err)
+			}
+		} else {
+			fmt.Println(cmdMenu)
 		}
 	}
+}
+
+func isArgSet(short string, long string) bool {
+	for _, arg := range os.Args {
+		if arg == short || arg == long {
+			return true
+		}
+	}
+	return false
 }
 
 func gitSyncOptions() *git.SyncOptions {
