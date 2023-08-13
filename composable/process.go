@@ -30,6 +30,7 @@ type Process struct {
 	Status   ProcessStatus        `json:"status"`
 	StatusC  <-chan ProcessStatus `json:"-"`
 	Command  *exec.Cmd            `json:"-"`
+	logging  Logging
 	statusC  chan<- ProcessStatus
 	termFunc func()
 }
@@ -45,6 +46,10 @@ func NewProcess(binary string, args []string, dir string) *Process {
 		StatusC: c,
 		statusC: c,
 	}
+}
+
+func (p *Process) SetLogging(l Logging) {
+	p.logging = l
 }
 
 // Restart conditionally calls Process.Stop if Process is running before calling Process.Start.
@@ -63,8 +68,13 @@ func (p *Process) Start() {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	p.termFunc = cancelFunc
 	p.Command = exec.CommandContext(ctx, p.Binary, p.Args...)
-	p.Command.Stdout = os.Stdout
-	p.Command.Stderr = os.Stderr
+	if p.logging == nil {
+		p.Command.Stdout = os.Stdout
+		p.Command.Stderr = os.Stderr
+	} else {
+		p.Command.Stdout = p.logging.Stdout()
+		p.Command.Stderr = p.logging.Stderr()
+	}
 	p.Command.Dir = p.Dir
 	p.updateStatus(ProcessRunning)
 	err := p.Command.Run()
