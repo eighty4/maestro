@@ -276,19 +276,13 @@ func (j *ComposeProjectJob) completeJob() {
 		up := NewUnicodePrinting()
 		fmt.Printf("┌ Selected %d %s for Maestro to orchestrate:\n|\n", len(result), util.PluralPrint("package", len(result)))
 		for _, pkg := range result {
-			fmt.Printf("|   %s\n", j.packagePrependProjectName(&pkg))
+			fmt.Printf("|   %s\n", j.packagePrependProjectName(pkg))
 			for _, cmd := range pkg.commands {
-				fmt.Printf("|    %s %s\n", up.greenCheck, cmd.Desc)
+				fmt.Printf("|    %s %s\n", up.greenCheck, cmd.Exec.ToString())
 			}
 		}
 
-		// clear desc set for compose ui display
-		for _, pkg := range j.packages {
-			for _, cmd := range pkg.commands {
-				cmd.Desc = ""
-			}
-		}
-		j.cfg.AddPackages(j.packages)
+		j.cfg.AddPackages(result)
 		if err := j.cfg.SaveConfig(); err != nil {
 			log.Fatalln(err)
 		}
@@ -298,17 +292,26 @@ func (j *ComposeProjectJob) completeJob() {
 	j.doneC <- nil
 }
 
-func (j *ComposeProjectJob) collectSelectedCommands() []Package {
-	var result []Package
+func (j *ComposeProjectJob) collectSelectedCommands() []*Package {
+	var result []*Package
 	for pkgI, pkg := range j.packages {
 		var commands []*Command
 		for cmdI, selected := range j.selected[pkgI] {
 			if selected {
-				commands = append(commands, pkg.commands[cmdI])
+				cmd := pkg.commands[cmdI]
+				commands = append(commands, &Command{
+					Archetype: cmd.Archetype,
+					Desc:      "",
+					Dir:       cmd.Dir,
+					Exec:      cmd.Exec,
+					File:      cmd.File,
+					Id:        cmd.Id,
+					Name:      cmd.Name,
+				})
 			}
 		}
 		if len(commands) > 0 {
-			result = append(result, Package{
+			result = append(result, &Package{
 				commands: commands,
 				dir:      pkg.dir,
 				name:     pkg.name,
