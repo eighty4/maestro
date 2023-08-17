@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/eighty4/maestro/util"
-	"golang.org/x/term"
 	"log"
 	"math"
-	"os"
 	"path/filepath"
 )
+
+var composeMenuKeyCmds []KeyCmd
 
 func composeProject(cfg *Config) error {
 	// todo support merging an existing maestro config's commands into compose job
@@ -20,6 +20,7 @@ func composeProject(cfg *Config) error {
 	if err != nil {
 		return err
 	}
+	composeMenuKeyCmds = []KeyCmd{Up, Down, Space, Enter}
 	if err := j.start(); err != nil {
 		return err
 	}
@@ -129,72 +130,21 @@ func (j *ComposeProjectJob) packagePrependProjectName(pkg *Package) string {
 	return filepath.Join(filepath.Base(j.cfg.Dir), pkg.name)
 }
 
-type KeyCmd int
-
-const (
-	NotCmd KeyCmd = -1
-	Space  KeyCmd = 0
-	Enter  KeyCmd = 1
-	Up     KeyCmd = 2
-	Down   KeyCmd = 3
-)
-
 func (j *ComposeProjectJob) readKeyCmd() {
-	for {
-		if keyCmd, err := j.readKeyCmdInput(); err != nil {
-			j.doneC <- err
-		} else {
-			switch keyCmd {
-			case NotCmd:
-				continue
-			case Space:
-				j.handleSpaceKey()
-				break
-			case Enter:
-				j.handleEnterKey()
-				break
-			case Up:
-				j.moveCursorUp()
-				break
-			case Down:
-				j.moveCursorDown()
-				break
-			}
-			return
+	if keyCmd, err := readKeyCmd(composeMenuKeyCmds); err != nil {
+		j.doneC <- err
+	} else {
+		switch keyCmd {
+		case Space:
+			j.handleSpaceKey()
+		case Enter:
+			j.handleEnterKey()
+		case Up:
+			j.moveCursorUp()
+		case Down:
+			j.moveCursorDown()
 		}
 	}
-}
-
-func (j *ComposeProjectJob) readKeyCmdInput() (KeyCmd, error) {
-	termFd := int(os.Stdin.Fd())
-	termState, err := term.MakeRaw(termFd)
-	if err != nil {
-		return NotCmd, err
-	}
-	bytes := make([]byte, 3)
-	bytesRead, err := os.Stdin.Read(bytes)
-	if err != nil {
-		return NotCmd, err
-	}
-	_ = term.Restore(termFd, termState)
-	if bytesRead == 1 {
-		if bytes[0] == 32 {
-			return Space, nil
-		} else if bytes[0] == 13 {
-			return Enter, nil
-		} else if bytes[0] == 3 {
-			os.Exit(0)
-		}
-	} else if bytesRead == 3 {
-		if bytes[0] == 27 && bytes[1] == 91 {
-			if bytes[2] == 65 {
-				return Up, nil
-			} else if bytes[2] == 66 {
-				return Down, nil
-			}
-		}
-	}
-	return NotCmd, nil
 }
 
 func (j *ComposeProjectJob) moveCursorUp() {
