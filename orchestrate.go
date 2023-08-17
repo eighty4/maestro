@@ -7,12 +7,28 @@ import (
 )
 
 func orchestrateProject(cfg *Config) error {
-	j, err := NewOrchestrateProjectJob(cfg)
-	if err != nil {
+	if cfg == nil || !cfg.FileExists {
+		fmt.Println("This directory is missing a maestro.yaml. Compose a project with `maestro -c`.")
+		return nil
+	} else if !cfgHasCommands(cfg) {
+		fmt.Println("This directory's maestro.yaml does not have any commands configured.")
+		return nil
+	} else if j, err := NewOrchestrateProjectJob(cfg); err != nil {
 		return err
+	} else {
+		return j.start()
 	}
-	j.start()
-	return nil
+}
+
+func cfgHasCommands(cfg *Config) bool {
+	if cfg != nil && cfg.FileExists {
+		for _, pkg := range cfg.Packages {
+			if len(pkg.commands) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type OrchestrateProjectJob struct {
@@ -26,7 +42,7 @@ func NewOrchestrateProjectJob(cfg *Config) (OrchestrateProjectJob, error) {
 	}, nil
 }
 
-func (j *OrchestrateProjectJob) start() {
+func (j *OrchestrateProjectJob) start() error {
 	var composables []composable.Composable
 	for _, pkg := range j.cfg.Packages {
 		for _, cmd := range pkg.commands {
