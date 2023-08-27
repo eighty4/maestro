@@ -16,15 +16,12 @@ func composeProject(cfg *Config) error {
 	if cfg.FileExists {
 		return fmt.Errorf("this directory already has a %s file", cfg.Filename)
 	}
-	j, err := NewComposeProjectJob(cfg)
-	if err != nil {
+	if j, err := NewComposeProjectJob(cfg); err != nil {
 		return err
+	} else {
+		composeMenuKeyCmds = []KeyCmd{Up, Down, Space, Enter}
+		return j.start()
 	}
-	composeMenuKeyCmds = []KeyCmd{Up, Down, Space, Enter}
-	if err := j.start(); err != nil {
-		return err
-	}
-	return nil
 }
 
 type ComposeProjectJob struct {
