@@ -25,7 +25,12 @@ func Cwd() string {
 }
 
 func IsDebug() bool {
-	return os.Getenv("MAESTRO_DEBUG") == "true"
+	return IsFlagEnabled("MAESTRO_DEBUG")
+}
+
+func IsFlagEnabled(key string) bool {
+	value := os.Getenv(key)
+	return value == "true" || value == "1"
 }
 
 func Duration(duration time.Duration, n int8) time.Duration {

@@ -11,6 +11,11 @@ import (
 	"strconv"
 )
 
+const cmdMenuPreCompose = `Maestro --better-dx
+
+  maestro git                sync a workspace of repositories
+    --detail-local-changes   print excessive details about repos`
+
 const cmdMenu = `Maestro --better-dx
 
   maestro                    start a project orchestration
@@ -39,19 +44,28 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "git" {
 		gitSync(cfg)
 	} else {
-		if isArgSet("-c", "--compose") {
-			if err := composeProject(cfg); err != nil {
-				log.Fatalln(err)
-			}
-		} else if isArgSet("-l", "--ls") {
-			lsCommands(cfg)
-		} else if cfg.FileExists {
-			if err := orchestrateProject(cfg); err != nil {
-				log.Fatalln(err)
-			}
+		if util.IsFlagEnabled("MAESTRO_ORCHESTRATION") {
+			orchestration(cfg)
 		} else {
-			fmt.Println(cmdMenu)
+			fmt.Println(cmdMenuPreCompose)
 		}
+	}
+}
+
+func orchestration(cfg *Config) {
+	color.HiYellow("orchestration feature flag enabled")
+	if isArgSet("-c", "--compose") {
+		if err := composeProject(cfg); err != nil {
+			log.Fatalln(err)
+		}
+	} else if isArgSet("-l", "--ls") {
+		lsCommands(cfg)
+	} else if cfg.FileExists {
+		if err := orchestrateProject(cfg); err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		fmt.Println(cmdMenu)
 	}
 }
 

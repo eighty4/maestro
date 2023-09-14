@@ -78,6 +78,8 @@ func (t *IntegrationTest) Run() bool {
 		bin = "maestro.exe"
 	}
 	t.maestro = exec.Command(bin)
+	t.maestro.Env = os.Environ()
+	t.maestro.Env = append(t.maestro.Env, "MAESTRO_ORCHESTRATION=1")
 	t.maestro.Dir = t.dir
 	maestroStdout := bytes.Buffer{}
 	t.maestro.Stdout = &maestroStdout
