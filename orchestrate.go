@@ -50,7 +50,7 @@ func (j *OrchestrateProjectJob) start() error {
 				fmt.Println("Orchestrating docker.compose has not been implemented")
 				os.Exit(1)
 			}
-			composables = append(composables, composable.NewExecComposable(cmd.Exec))
+			composables = append(composables, cmd.Exec.Process())
 		}
 	}
 	j.composition = composable.NewComposition(composables)

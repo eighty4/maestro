@@ -16,7 +16,9 @@ func TestProcessStatus_String(t *testing.T) {
 func TestProcess_StartAndStop(t *testing.T) {
 	p := NewProcess("sleep", []string{"90"}, util.Cwd())
 	go p.Start()
-	assert.Equal(t, ProcessRunning, <-p.StatusC)
+	assert.Equal(t, ProcessRunning, <-p.ProcessStatusC)
+	assert.Equal(t, ProcessRunning, p.ProcessStatus)
 	p.Stop()
-	assert.Equal(t, ProcessStopped, <-p.StatusC)
+	assert.Equal(t, ProcessStopped, <-p.ProcessStatusC)
+	assert.Equal(t, ProcessStopped, p.ProcessStatus)
 }
