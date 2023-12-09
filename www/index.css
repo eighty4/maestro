@@ -1,0 +1,174 @@
+:root {
+    --color-background: #111;
+    --color-card: #222;
+    --color-border: #444;
+    --color-green: #18C132;
+    --color-red: #ff5f58;
+    --color-yellow: #ffbd2e;
+    --mini-circle-circumference: .8rem;
+    --radius: 100vmax;
+    --circumference: calc(var(--radius) * 2);
+    --center: calc(var(--circumference) * -.5 + 50%);
+    --header-height: 3rem;
+}
+
+@font-face {
+    font-family: Inter;
+    font-weight: 400 700;
+    src:
+        url("fonts/inter-latin-400-normal.woff2") format("woff2"),
+        url("fonts/inter-latin-400-normal.woff") format("woff"),
+        url("fonts/inter-latin-700-normal.woff2") format("woff2"),
+        url("fonts/inter-latin-700-normal.woff") format("woff")
+}
+
+@font-face {
+    font-family: "Ibm Plex Mono";
+    font-weight: 400 700;
+    src:
+        url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"),
+        url("fonts/ibm-plex-mono-latin-400-normal.woff") format("woff"),
+        url("fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2"),
+        url("fonts/ibm-plex-mono-latin-700-normal.woff") format("woff")
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-background);
+    font-family: Inter, sans-serif;
+    color: #eee;
+}
+
+header {
+    position: sticky;
+    top: 0;
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    height: var(--header-height);
+    z-index: 5;
+}
+
+header nav {
+    font-family: "Ibm Plex Mono", monospace;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    height: var(--header-height);
+}
+
+header nav a {
+    color: #eee;
+    text-decoration: none;
+}
+
+main {
+    overflow-x: hidden;
+}
+
+h1 {
+    margin: 25vh 0;
+    font-family: "Ibm Plex Mono", monospace;
+    font-size: 6vw;
+    letter-spacing: .1vw;
+    line-height: 6vw;
+    text-align: center;
+    word-break: keep-all;
+}
+
+.red {
+    background: var(--color-red);
+}
+
+.yellow {
+    background: var(--color-yellow);
+}
+
+.green {
+    background: var(--color-green);
+}
+
+.card-section {
+    --minimized-circle-top: 0;
+    --minimized-circle-left: 0;
+    --section-height: var(--radius);
+    position: relative;
+    overflow: hidden;
+    height: var(--section-height);
+}
+
+.circle {
+    position: absolute;
+    top: calc(-1 * var(--radius) / 2);
+    left: var(--center);
+    width: var(--circumference);
+    height: var(--circumference);
+    border-radius: 50%;
+}
+
+.minimize {
+    animation: ease-out .75s scale;
+    animation-fill-mode: forwards;
+    transform-origin: top left;
+}
+
+@keyframes scale {
+    from {
+        top: calc(-1 * var(--radius) / 2);
+        left: var(--center);
+        transform: scale(1);
+    }
+    to {
+        top: calc(var(--minimized-circle-top) + (var(--mini-circle-circumference) / 2));
+        left: calc(var(--minimized-circle-left) + (var(--mini-circle-circumference) / 2));
+        transform: scale(0);
+    }
+}
+
+.card {
+    --card-height: 40vh;
+    --card-width: 50vh;
+    /*position: sticky;*/
+    position: absolute;
+    /*top: 0;*/
+    /*left: 0;*/
+    top: calc(var(--section-height) / 2 - (var(--card-height) / 2));
+    left: calc(50vw - var(--card-width) / 2);
+    width: var(--card-width);
+    height: var(--card-height);
+    border: 1px solid var(--color-border);
+    border-radius: .75rem;
+    background: #222;
+    padding: .75rem 1rem;
+}
+
+.card + .card {
+    margin-top: 50vh;
+}
+
+.card-buttons {
+    display: flex;
+    flex-direction: row;
+    gap: .5rem;
+    height: 2rem;
+}
+
+.card-button {
+    width: var(--mini-circle-circumference);
+    height: var(--mini-circle-circumference);
+    border-radius: 50%;
+}
+
+.bg-circle {
+    z-index: 1;
+}
+
+.card {
+    z-index: 2;
+}
+
+.fg-circle {
+    z-index: 3;
+}

@@ -1,182 +1,72 @@
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>sh maestro</title>
-    <link href="84.svg" rel="icon" type="image/svg+xml"/>
-    <link href="favicon.ico" rel="icon" sizes="any"/>
-    <link href="manifest.json" rel="manifest"/>
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const [copyBtn] = document.getElementsByClassName('copy')
-            const [shellCmd] = document.getElementsByTagName('pre')
-            const copyToClipboard = () => {
-                copyBtn.classList.add('copied')
-                copyBtn.classList.remove('copy')
-                navigator.clipboard.writeText(shellCmd.innerText)
-                    .then()
-                    .catch(() => console.log('what the clipboard?'))
-            }
-            copyBtn.addEventListener('click', copyToClipboard)
-            shellCmd.addEventListener('click', copyToClipboard)
-        })
-    </script>
-    <style>
-
-        :root {
-            --max-width: 50rem;
-        }
-
-        @font-face {
-            font-family: 'Barlow';
-            src: url('fonts/barlow.woff2') format('woff2'), url('fonts/barlow.woff') format('woff');
-        }
-
-        @font-face {
-            font-family: 'Cutive';
-            src: url('fonts/cutive.woff2') format('woff2'), url('fonts/cutive.woff') format('woff');
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-        }
-
-        html {
-            background: #FFBD2E;
-            color: #fff;
-            font-family: Barlow, sans-serif;
-        }
-
-        body {
-            line-height: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            padding: 5rem;
-            align-items: center;
-        }
-
-        main {
-            background: #222;
-            border-radius: .2rem;
-            padding: 2rem;
-            display: inline-block;
-            max-width: var(--max-width);
-            box-sizing: border-box;
-        }
-
-        h1, h2 {
-            color: #FF5F58;
-        }
-
-        h1 {
-            margin-bottom: 1.5rem;
-        }
-
-        h2 {
-            margin-top: 1.5rem;
-        }
-
-        a img {
-            margin: 0;
-            height: 1.5rem;
-            width: 1.5rem;
-            position: relative;
-            top: .3rem;
-            left: .2rem;
-        }
-
-        p, ul, pre, div {
-            margin-top: .5rem;
-        }
-
-        ul {
-            padding-left: 2.2rem;
-        }
-
-
-        img {
-            margin-top: 3rem;
-            max-width: var(--max-width);
-        }
-
-        p img {
-            margin: 0;
-            height: 1.5rem;
-            width: 1.5rem;
-            position: relative;
-            top: .3rem;
-            left: .2rem;
-        }
-
-        .copy, .copied {
-            width: 1.5rem;
-            height: 1.5rem;
-            mask-repeat: no-repeat;
-            -webkit-mask-repeat: no-repeat;
-            mask-size: 1.5rem;
-            -webkit-mask-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .copy {
-            mask-image: url('icons/copy.svg');
-            -webkit-mask-image: url('icons/copy.svg');
-            background-color: #18C132;
-        }
-
-        .copied {
-            mask-image: url('icons/copied.svg');
-            -webkit-mask-image: url('icons/copied.svg');
-            background-color: #FFBD2E;
-        }
-
-        .copy:hover, .copied:hover {
-            scale: 120%;
-        }
-
-        code {
-            line-height: 1.5rem;
-            letter-spacing: .025rem;
-            font-size: 1rem;
-            font-weight: 300;
-            font-family: Cutive, monospace;
-            padding: .2rem .4rem;
-            background: #333;
-        }
-
-        pre {
-            cursor: pointer;
-        }
-
-        code:hover {
-            font-weight: 700;
-        }
-
-        a {
-            color: #18C132 !important;
-        }
-    </style>
+    <title>maestro</title>
+    <link href="index.css" rel="stylesheet"/>
 </head>
 <body>
+
+<header>
+    <nav>
+        <a href="#red-fg-section">/* docs */</a>
+        <a href="#yellow-card">/* code */</a>
+        <a href="#green-fg-section">/* setup */</a>
+    </nav>
+</header>
+
 <main>
-    <h1>Maestro --better-dx</h1>
-    <p><code>maestro git</code> will</p>
-    <ul>
-        <li>pull all your repositories</li>
-        <li>report local and stashed changes</li>
-        <li>clone missing workspace repositories</li>
-    </ul>
-    <h2>Install</h2>
-    <div style="display:flex;"><p style="display: inline;margin: 0;">Linux and Mac users can install with</p>
-        <div style="flex: 1; display:inline; margin: 0;"></div>
-        <div class="copy" style="margin: 0;"></div>
+
+    <h1>maestro --better-dx</h1>
+
+    <div style="height: 50rem; display: flex; align-items: center; justify-content: center">
+        <p>some content</p>
     </div>
-    <pre><code>curl -fsSL https://maestro.eighty4.tech/install.sh | sh</code></pre>
-    <p><a href="https://github.com/eighty4/maestro/releases/latest">Prebuilt binaries</a> are available for Linux, Mac and
-        Windows</p>
-    <p style="margin-top: 2rem; text-align: center;"><a href="https://github.com/eighty4/maestro">Details and development on <img
-            alt="github logo" src="icons/github.svg"></a></p>
+
+    <div style="height: 50rem; display: flex; align-items: center; justify-content: center">
+        <p>some content</p>
+    </div>
+
+    <div id="red-fg-section" class="card-section">
+        <div id="big-red-fg" class="red circle fg-circle"></div>
+        <div id="big-yellow-bg" class="yellow circle bg-circle"></div>
+        <div id="red-card" class="card">
+            <div class="card-buttons">
+                <div id="mini-red" class="red card-button"></div>
+                <div class="yellow card-button"></div>
+                <div class="green card-button"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="yellow-fg-section" class="card-section">
+        <div id="big-yellow-fg" class="yellow circle fg-circle"></div>
+        <div id="big-green-bg" class="green circle bg-circle"></div>
+        <a id="foo">asdf</a>
+        <div id="yellow-card" class="card">
+            <div class="card-buttons">
+                <div class="red card-button"></div>
+                <div id="mini-yellow" class="yellow card-button"></div>
+                <div class="green card-button"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="green-fg-section" class="card-section">
+        <div id="big-green-fg" class="green circle fg-circle"></div>
+        <div id="big-red-bg" class="red circle bg-circle"></div>
+        <div id="green-card" class="card">
+            <div class="card-buttons">
+                <div class="red card-button"></div>
+                <div class="yellow card-button"></div>
+                <div id="mini-green" class="green card-button"></div>
+            </div>
+        </div>
+    </div>
 </main>
-<img alt="maestro git command output" src="git.svg"/>
+
+<div style="height: 50rem; display: flex; align-items: center; justify-content: center">
+    <p>some content</p>
+</div>
+
+<script src="index.js"></script>
 </body>
 </html>
