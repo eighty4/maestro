@@ -6,19 +6,13 @@ import (
 	"testing"
 )
 
-func TestProcessStatus_String(t *testing.T) {
-	assert.Equal(t, ProcessStatus("NotStarted"), ProcessNotStarted)
-	assert.Equal(t, ProcessStatus("Running"), ProcessRunning)
-	assert.Equal(t, ProcessStatus("Stopped"), ProcessStopped)
-	assert.Equal(t, ProcessStatus("Error"), ProcessError)
-}
-
-func TestProcess_StartAndStop(t *testing.T) {
+func TestProcess_StartAndStop_UpdatesStatus(t *testing.T) {
 	p := NewProcess("sleep", []string{"90"}, util.Cwd())
+	assert.Equal(t, NotStarted, p.Status())
 	go p.Start()
-	assert.Equal(t, ProcessRunning, <-p.ProcessStatusC)
-	assert.Equal(t, ProcessRunning, p.ProcessStatus)
+	assert.Equal(t, Running, <-p.StatusC())
+	assert.Equal(t, Running, p.Status())
 	p.Stop()
-	assert.Equal(t, ProcessStopped, <-p.ProcessStatusC)
-	assert.Equal(t, ProcessStopped, p.ProcessStatus)
+	assert.Equal(t, Stopped, <-p.StatusC())
+	assert.Equal(t, Stopped, p.Status())
 }

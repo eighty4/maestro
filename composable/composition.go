@@ -1,24 +1,5 @@
 package composable
 
-// CompositionStatus represents states of a Composition.
-type CompositionStatus string
-
-const (
-	CompositionNotStarted CompositionStatus = "NotStarted"
-	CompositionStarting   CompositionStatus = "Starting"
-	CompositionRunning    CompositionStatus = "Running"
-	CompositionFailing    CompositionStatus = "Failing"
-	CompositionError      CompositionStatus = "Error"
-	CompositionStopped    CompositionStatus = "Stopped"
-)
-
-type Composable interface {
-	Start()
-	Restart()
-	Status() CompositionStatus
-	Stop()
-}
-
 type Composition struct {
 	composables []Composable
 }

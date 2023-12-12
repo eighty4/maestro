@@ -118,15 +118,16 @@ type ExecHealthcheckMethod struct {
 func (hm *ExecHealthcheckMethod) Perform(hcResultC chan<- bool) {
 	hm.process.Restart()
 	for {
-		switch <-hm.process.ProcessStatusC {
-		case ProcessStopped:
+		c := hm.process.StatusC()
+		switch <-c {
+		case Stopped:
 			if hm.process.Command.ProcessState.ExitCode() > 0 {
 				hcResultC <- false
 			} else {
 				hcResultC <- true
 			}
 			break
-		case ProcessError:
+		case Error:
 			hcResultC <- false
 			break
 		}

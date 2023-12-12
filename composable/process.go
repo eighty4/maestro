@@ -8,42 +8,24 @@ import (
 	"runtime"
 )
 
-// ProcessStatus represents states of a Process.
-type ProcessStatus string
-
-const (
-	// ProcessNotStarted is the status of a Process before Process.Start called.
-	ProcessNotStarted ProcessStatus = "NotStarted"
-	// ProcessRunning is the status of a running Process.
-	ProcessRunning ProcessStatus = "Running"
-	// ProcessStopped is the status of a stopped Process.
-	ProcessStopped ProcessStatus = "Stopped"
-	// ProcessError is the status of a Process that has failed to start or exited with an error exit code.
-	ProcessError ProcessStatus = "Error"
-)
-
 // Process is a state machine and container for exec.Cmd, maintaining status with ProcessStatus.
 type Process struct {
-	Binary         string               `json:"binary"`
-	Args           []string             `json:"args"`
-	Dir            string               `json:"dir"`
-	ProcessStatus  ProcessStatus        `json:"status"`
-	ProcessStatusC <-chan ProcessStatus `json:"-"`
-	Command        *exec.Cmd            `json:"-"`
-	processStatusC chan<- ProcessStatus
-	termFunc       func()
+	Binary        string    `json:"binary"`
+	Args          []string  `json:"args"`
+	Dir           string    `json:"dir"`
+	CurrentStatus Status    `json:"status"`
+	Command       *exec.Cmd `json:"-"`
+	statusC       chan Status
+	termFunc      func()
 }
 
 // NewProcess creates a Process for a given binary with arguments and a work directory.
 func NewProcess(binary string, args []string, dir string) *Process {
-	c := make(chan ProcessStatus)
 	return &Process{
-		Binary:         binary,
-		Args:           args,
-		Dir:            dir,
-		ProcessStatus:  ProcessNotStarted,
-		ProcessStatusC: c,
-		processStatusC: c,
+		Binary:  binary,
+		Args:    args,
+		Dir:     dir,
+		statusC: make(chan Status),
 	}
 }
 
@@ -66,29 +48,23 @@ func (p *Process) Start() {
 	p.Command.Stdout = os.Stdout
 	p.Command.Stderr = os.Stderr
 	p.Command.Dir = p.Dir
-	p.updateStatus(ProcessRunning)
+	p.updateStatus(Running)
 	err := p.Command.Run()
 	if err != nil && !p.isCancelledCmdError(err) {
 		log.Println("[ERROR] Process.Start error", err.Error())
-		p.updateStatus(ProcessError)
+		p.updateStatus(Error)
 	} else {
 		log.Println("[DEBUG] Process.Start stopped")
-		p.updateStatus(ProcessStopped)
+		p.updateStatus(Stopped)
 	}
 }
 
-func (p *Process) Status() CompositionStatus {
-	switch p.ProcessStatus {
-	case ProcessNotStarted:
-		return CompositionNotStarted
-	case ProcessStopped:
-		return CompositionStopped
-	case ProcessError:
-		return CompositionError
-	case ProcessRunning:
-		return CompositionRunning
-	}
-	return CompositionNotStarted
+func (p *Process) Status() Status {
+	return p.CurrentStatus
+}
+
+func (p *Process) StatusC() <-chan Status {
+	return p.statusC
 }
 
 // Stop uses a context.CancelFunc created for exec.CommandContext to stop its running process.
@@ -98,22 +74,22 @@ func (p *Process) Stop() {
 		p.termFunc()
 		p.termFunc = nil
 	}
-	p.updateStatus(ProcessStopped)
+	p.updateStatus(Stopped)
 }
 
 // updateStatus pushes the new ProcessStatus to Process.StatusC readers.
-func (p *Process) updateStatus(status ProcessStatus) {
-	log.Println("[DEBUG] Process.updateStatus", p.ProcessStatus, "to", status)
-	p.ProcessStatus = status
+func (p *Process) updateStatus(status Status) {
+	log.Println("[DEBUG] Process.updateStatus", p.CurrentStatus, "to", status)
+	p.CurrentStatus = status
 	select {
-	case p.processStatusC <- status:
+	case p.statusC <- p.Status():
 	default:
 	}
 }
 
 // isCancelledCmdError determines whether an error from exec.Cmd is a killed signal message.
 func (p *Process) isCancelledCmdError(err error) bool {
-	if p.ProcessStatus == ProcessStopped {
+	if p.CurrentStatus == Stopped {
 		switch runtime.GOOS {
 		case "windows":
 			return true
