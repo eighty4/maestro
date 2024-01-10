@@ -3,24 +3,56 @@ function registerIntersectionObserver(color) {
     const card = cardSection.querySelector(`#${color}-card`)
     const miniCircle = cardSection.querySelector(`#mini-${color}`)
     const fgCircle = cardSection.querySelector(`#big-${color}-fg`)
+
     function updateMinimizedOffset() {
+        console.log(color, 'updateMinimizedOffset')
         const minimizedOffset = getContainerOffset(miniCircle, card.parentElement)
-        card.parentElement.style.setProperty('--minimized-circle-top', `${minimizedOffset.top}px`)
-        card.parentElement.style.setProperty('--minimized-circle-left', `${minimizedOffset.left}px`)
+        cardSection.style.setProperty('--minimized-circle-top', `${minimizedOffset.top}px`)
+        cardSection.style.setProperty('--minimized-circle-left', `${minimizedOffset.left}px`)
     }
+
     updateMinimizedOffset()
-    window.onresize = updateMinimizedOffset
+    window.addEventListener('resize', updateMinimizedOffset, {passive: true})
+
+    let initialScrollY = null
+
+    function setMinimizeProgress(num) {
+        cardSection.style.setProperty('--minimize-progress', `${num}`)
+    }
+
+    function updateScrollOffset(e) {
+        console.log(color, 'updateScrollOffset', 'initial', initialScrollY, 'current', window.scrollY)
+        if (window.scrollY < initialScrollY) {
+            setMinimizeProgress(0)
+        } else {
+            const diffScrollY = window.scrollY - initialScrollY
+            setMinimizeProgress(diffScrollY / card.getBoundingClientRect().height)
+        }
+    }
 
     function intersectionObserverCallback(entries) {
-        if (entries[0].intersectionRatio >.5) {
-            fgCircle.classList.add('minimize')
+        const {intersectionRatio} = entries[0]
+        console.log(color, 'intersectionObserverCallback', intersectionRatio)
+        if (intersectionRatio === 1) {
+            window.removeEventListener('scroll', updateScrollOffset)
+            setMinimizeProgress(1)
+            fgCircle.classList.remove('minimizing')
+            fgCircle.classList.add('minimized')
             observer.unobserve(card)
-            window.onresize = undefined
+            window.removeEventListener('resize', updateMinimizedOffset)
+        } else if (intersectionRatio > 0) {
+            fgCircle.classList.add('minimizing')
+            initialScrollY = window.scrollY
+            window.addEventListener('scroll', updateScrollOffset, {passive: true})
+        } else if (intersectionRatio === 0 && initialScrollY !== null) {
+            fgCircle.classList.remove('minimizing')
+            window.removeEventListener('scroll', updateScrollOffset)
+            initialScrollY = null
         }
     }
 
     const observer = new IntersectionObserver(intersectionObserverCallback, {
-        threshold: [.5],
+        threshold: [0, 0.0000000001, 1],
     })
     observer.observe(card)
 }

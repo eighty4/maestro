@@ -36,7 +36,7 @@ html, body {
     margin: 0;
     padding: 0;
     background: var(--color-background);
-    font-family: Inter, sans-serif;
+    font-family: Inter, Helvetica, sans-serif;
     color: #eee;
 }
 
@@ -93,6 +93,10 @@ h1 {
 .card-section {
     --minimized-circle-top: 0;
     --minimized-circle-left: 0;
+    --minimized-circle-center-top: calc(var(--minimized-circle-top) + (var(--mini-circle-circumference) / 2));
+    --minimized-circle-center-left: calc(var(--minimized-circle-left) + (var(--mini-circle-circumference) / 2));
+    --minimize-progress: 0;
+    --minimize-animation-progress: calc(1 - var(--minimize-progress));
     --section-height: var(--radius);
     position: relative;
     overflow: hidden;
@@ -108,8 +112,17 @@ h1 {
     border-radius: 50%;
 }
 
-.minimize {
-    animation: ease-out .75s scale;
+.minimizing {
+    top: calc(var(--minimize-animation-progress) * var(--minimized-circle-center-top));
+    left: calc(var(--minimize-animation-progress) * var(--minimized-circle-center-left));
+    transform: scale(var(--minimize-animation-progress));
+    /*animation: scale 0s ease-out;*/
+    animation-fill-mode: forwards;
+    transform-origin: top left;
+}
+
+.minimized {
+    animation: scale .75s ease-out;
     animation-fill-mode: forwards;
     transform-origin: top left;
 }
@@ -121,9 +134,9 @@ h1 {
         transform: scale(1);
     }
     to {
-        top: calc(var(--minimized-circle-top) + (var(--mini-circle-circumference) / 2));
-        left: calc(var(--minimized-circle-left) + (var(--mini-circle-circumference) / 2));
-        transform: scale(0);
+        top: calc(var(--minimize-animation-progress) * var(--minimized-circle-center-top));
+        left: calc(var(--minimize-animation-progress) * var(--minimized-circle-center-left));
+        transform: scale(var(--minimize-animation-progress));
     }
 }
 
