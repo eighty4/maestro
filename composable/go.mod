@@ -3,7 +3,7 @@ module github.com/eighty4/maestro/composable
 go 1.19
 
 require (
-	github.com/eighty4/maestro/util v0.0.0-20230202223313-0b83ddcd289b
+	github.com/eighty4/maestro/util v0.0.0-20240320195438-756364b3a020
 	github.com/stretchr/testify v1.8.1
 )
 

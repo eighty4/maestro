@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/eighty4/maestro/composable v0.0.0-20240320195438-756364b3a020
-	github.com/eighty4/maestro/git v1.0.0
-	github.com/eighty4/maestro/testutil v0.0.0-20230712171237-d516c41d7666
+	github.com/eighty4/maestro/git v0.0.0-20240320195438-756364b3a020
+	github.com/eighty4/maestro/testutil v0.0.0-20240320195438-756364b3a020
 	github.com/eighty4/maestro/util v0.0.0-20240320195438-756364b3a020
 	github.com/fatih/color v1.16.0
 	github.com/stretchr/testify v1.9.0
