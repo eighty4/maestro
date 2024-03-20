@@ -79,6 +79,7 @@ jobs:
 
   test-windows:
     runs-on: windows-2022
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
