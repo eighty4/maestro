@@ -1,3 +1,6 @@
 .idea
 dist
 maestro
+go.work
+go.work.sum
+
