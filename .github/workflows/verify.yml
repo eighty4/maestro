@@ -156,13 +156,17 @@ jobs:
       - name: lint maestro
         run: golangci-lint run
       - name: lint composable
-        run: golangci-lint run composable
+        run: golangci-lint run
+        working-directory: composable
       - name: lint git
-        run: golangci-lint run git
+        run: golangci-lint run
+        working-directory: git
       - name: lint testutil
-        run: golangci-lint run testutil
-      - name: lint util
-        run: golangci-lint run util
+        run: golangci-lint run
+        working-directory: testutil
+      - name: lint
+        run: golangci-lint run
+        working-directory: util
 
   tidy:
     runs-on: ubuntu-22.04
@@ -171,28 +175,20 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.19.5
-      - name: workspace sync
-        run: go work sync
       - name: tidy maestro
         run: go mod tidy
       - name: tidy composable
-        run: |
-          cd composable
-          go mod tidy
+        run: go mod tidy
+        working-directory: composable
       - name: tidy git
-        run: |
-          cd git
-          go mod tidy
+        run: go mod tidy
+        working-directory: git
       - name: tidy testutil
-        run: |
-          cd testutil
-          go mod tidy
+        run: go mod tidy
+        working-directory: testutil
       - name: tidy util
-        run: |
-          cd util
-          go mod tidy
-      - name: workspace sync
-        run: go work sync
+        run: go mod tidy
+        working-directory: util
       - name: diff
         run: git diff --exit-code
 
