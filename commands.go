@@ -105,11 +105,15 @@ func checkArchetypeId(id string, archetype CommandArchetype) bool {
 }
 
 // todo extensible configuration driven CommandArchetype impl
-// todo go.mod => go run
-// todo gradle application plugin
-// todo procfile
-// todo pubspec.yaml => dart run
 // todo CommandArchetype registry service and initialization
+// todo bun and deno js runtimes
+// todo go.mod => go run
+// todo gradle android plugin
+// todo gradle application plugin
+// todo micronaut
+// todo procfile
+// todo pubspec.yaml => dart run, pubspec.yaml (with flutter sdk) => flutter run
+// todo zig
 type CommandArchetype interface {
 	ArchetypeId() string
 	FindCommands(dir string) []*Command
