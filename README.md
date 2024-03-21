@@ -14,7 +14,8 @@ Linux and Mac users can run
 curl -fsSL https://maestro.eighty4.tech/install.sh | sh
 ```
 
-With Go 1.19 or later, you can install from source
+With Go 1.22.1 or later, Maestro can be installed from source:
+
 ```bash
 go install github.com/eighty4/maestro@latest
 ```

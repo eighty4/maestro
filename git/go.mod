@@ -1,6 +1,6 @@
 module github.com/eighty4/maestro/git
 
-go 1.19
+go 1.22.1
 
 require (
 	github.com/eighty4/maestro/testutil v0.0.0-20240320195438-756364b3a020
