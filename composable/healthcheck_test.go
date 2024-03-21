@@ -9,8 +9,8 @@ import (
 )
 
 func TestExecHealthcheckMethod_Passing(t *testing.T) {
-	exec := ParseCmdString("ls /", ".")
-	hc := NewExecHealthcheck(exec, 0, 10*time.Millisecond)
+	hc := NewExecHealthcheck(ParseCmdString("ls /", "."), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckPassing, <-hc.StatusC)
 	hc.Stop()
@@ -18,8 +18,8 @@ func TestExecHealthcheckMethod_Passing(t *testing.T) {
 }
 
 func TestExecHealthcheckMethod_Failing(t *testing.T) {
-	exec := ParseCmdString("rm /", ".")
-	hc := NewExecHealthcheck(exec, 0, 10*time.Millisecond)
+	hc := NewExecHealthcheck(ParseCmdString("rm /", "."), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()
@@ -28,8 +28,8 @@ func TestExecHealthcheckMethod_Failing(t *testing.T) {
 
 func TestHttpHealthcheckMethod_Passing(t *testing.T) {
 	go createTestHttpServer(200)
-	hg := DescribeHttpGet(Https, 8653, "/health")
-	hc := NewHttpHealthcheck(hg, 0, 10*time.Millisecond)
+	hc := NewHttpHealthcheck(DescribeHttpGet(Https, 8653, "/health"), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()
@@ -38,8 +38,8 @@ func TestHttpHealthcheckMethod_Passing(t *testing.T) {
 
 func TestHttpHealthcheckMethod_Failing_3XX(t *testing.T) {
 	go createTestHttpServer(300)
-	hg := DescribeHttpGet(Https, 8653, "/health")
-	hc := NewHttpHealthcheck(hg, 0, 10*time.Millisecond)
+	hc := NewHttpHealthcheck(DescribeHttpGet(Https, 8653, "/health"), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()
@@ -48,8 +48,8 @@ func TestHttpHealthcheckMethod_Failing_3XX(t *testing.T) {
 
 func TestHttpHealthcheckMethod_Failing_4XX(t *testing.T) {
 	go createTestHttpServer(400)
-	hg := DescribeHttpGet(Https, 8653, "/health")
-	hc := NewHttpHealthcheck(hg, 0, 10*time.Millisecond)
+	hc := NewHttpHealthcheck(DescribeHttpGet(Https, 8653, "/health"), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()
@@ -58,8 +58,8 @@ func TestHttpHealthcheckMethod_Failing_4XX(t *testing.T) {
 
 func TestHttpHealthcheckMethod_Failing_5XX(t *testing.T) {
 	go createTestHttpServer(500)
-	hg := DescribeHttpGet(Https, 8653, "/health")
-	hc := NewHttpHealthcheck(hg, 0, 10*time.Millisecond)
+	hc := NewHttpHealthcheck(DescribeHttpGet(Https, 8653, "/health"), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()
@@ -67,8 +67,8 @@ func TestHttpHealthcheckMethod_Failing_5XX(t *testing.T) {
 }
 
 func TestHttpHealthcheckMethod_Failing_ConnectionRefused(t *testing.T) {
-	hg := DescribeHttpGet(Https, 8653, "/health")
-	hc := NewHttpHealthcheck(hg, 0, 10*time.Millisecond)
+	hc := NewHttpHealthcheck(DescribeHttpGet(Https, 8653, "/health"), 0, 10*time.Millisecond)
+	defer hc.Stop()
 	go hc.Start()
 	assert.Equal(t, HealthcheckFailing, <-hc.StatusC)
 	hc.Stop()

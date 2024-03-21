@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 )
 
-// Process is a state machine and container for exec.Cmd, maintaining status with ProcessStatus.
+// Process is a state machine and container for exec.Cmd, maintaining status with Status.
 type Process struct {
 	Binary        string    `json:"binary"`
 	Args          []string  `json:"args"`
@@ -17,22 +18,26 @@ type Process struct {
 	Command       *exec.Cmd `json:"-"`
 	statusC       chan Status
 	termFunc      func()
+	stoppedC      chan int
+	mutex         sync.Mutex
 }
 
 // NewProcess creates a Process for a given binary with arguments and a work directory.
 func NewProcess(binary string, args []string, dir string) *Process {
 	return &Process{
-		Binary:  binary,
-		Args:    args,
-		Dir:     dir,
-		statusC: make(chan Status),
+		Binary:        binary,
+		Args:          args,
+		Dir:           dir,
+		CurrentStatus: NotStarted,
+		statusC:       make(chan Status),
+		stoppedC:      make(chan int),
 	}
 }
 
 // Restart conditionally calls Process.Stop if Process is running before calling Process.Start.
 func (p *Process) Restart() {
 	log.Println("[DEBUG] Process.Restart", p.Binary)
-	if p.Command != nil && p.Command.ProcessState != nil && !p.Command.ProcessState.Exited() {
+	if p.Command != nil && p.Command.Process != nil {
 		p.Stop()
 	}
 	p.Start()
@@ -41,6 +46,8 @@ func (p *Process) Restart() {
 // Start initializes Process.Command with an exec.Cmd and starts the process with Run().
 // This func will block the calling goroutine.
 func (p *Process) Start() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 	log.Println("[DEBUG] Process.Start", p.Binary)
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	p.termFunc = cancelFunc
@@ -48,14 +55,42 @@ func (p *Process) Start() {
 	p.Command.Stdout = os.Stdout
 	p.Command.Stderr = os.Stderr
 	p.Command.Dir = p.Dir
-	p.updateStatus(Running)
-	err := p.Command.Run()
+	log.Println("[DEBUG] Process.Start starting")
+	p.updateStatus(Starting)
+	err := p.Command.Start()
 	if err != nil && !p.isCancelledCmdError(err) {
 		log.Println("[ERROR] Process.Start error", err.Error())
 		p.updateStatus(Error)
 	} else {
-		log.Println("[DEBUG] Process.Start stopped")
-		p.updateStatus(Stopped)
+		log.Println("[DEBUG] Process.Start running")
+		p.updateStatus(Running)
+		go func() {
+			cmd := p.Command
+			err = cmd.Wait()
+			if p.Command != cmd {
+				return
+			}
+			var resultStatus Status
+			if err != nil {
+				if p.isCancelledCmdError(err) {
+					log.Printf("[DEBUG] Process.Start error on command wait return determined to be cancel: %s\n", err)
+					resultStatus = Stopped
+				} else {
+					log.Printf("[DEBUG] Process.Start error on command wait return: %s\n", err)
+					resultStatus = Error
+				}
+			} else {
+				log.Println("[DEBUG] Process.Start after command wait return without error")
+				resultStatus = Stopped
+			}
+			if resultStatus != p.CurrentStatus {
+				p.updateStatus(resultStatus)
+				select {
+				case p.stoppedC <- cmd.Process.Pid:
+				default:
+				}
+			}
+		}()
 	}
 }
 
@@ -69,15 +104,20 @@ func (p *Process) StatusC() <-chan Status {
 
 // Stop uses a context.CancelFunc created for exec.CommandContext to stop its running process.
 func (p *Process) Stop() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 	log.Println("[DEBUG] Process.Stop", p.Binary)
-	if p.termFunc != nil {
+	if p.Command != nil && p.Command.Process != nil && p.Command.ProcessState == nil {
+		pid := p.Command.Process.Pid
 		p.termFunc()
 		p.termFunc = nil
+		if pid != <-p.stoppedC {
+			log.Fatalln("a most unlikely event")
+		}
 	}
-	p.updateStatus(Stopped)
 }
 
-// updateStatus pushes the new ProcessStatus to Process.StatusC readers.
+// updateStatus pushes the new Status to Process.StatusC readers.
 func (p *Process) updateStatus(status Status) {
 	log.Println("[DEBUG] Process.updateStatus", p.CurrentStatus, "to", status)
 	p.CurrentStatus = status
@@ -89,13 +129,10 @@ func (p *Process) updateStatus(status Status) {
 
 // isCancelledCmdError determines whether an error from exec.Cmd is a killed signal message.
 func (p *Process) isCancelledCmdError(err error) bool {
-	if p.CurrentStatus == Stopped {
-		switch runtime.GOOS {
-		case "windows":
-			return true
-		default:
-			return err.Error() == "signal: killed"
-		}
+	switch runtime.GOOS {
+	case "windows":
+		return true
+	default:
+		return err.Error() == "signal: killed"
 	}
-	return false
 }
