@@ -94,3 +94,15 @@ func TestProcess_Restart_Madness(t *testing.T) {
 	go p.Restart()
 	go p.Restart()
 }
+
+func TestProcess_Environment(t *testing.T) {
+	p := NewProcess("sleep", []string{"90"}, util.Cwd())
+	defer p.Stop()
+	assert.Equal(t, NotStarted, p.Status())
+	go p.Start()
+	assert.Equal(t, Starting, <-p.StatusC())
+	assert.Equal(t, Running, <-p.StatusC())
+	env := p.Environment()
+	assert.NotEmpty(t, env)
+	assert.Equal(t, env["COLORTERM"], "truecolor")
+}

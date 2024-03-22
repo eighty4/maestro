@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -32,6 +33,20 @@ func NewProcess(binary string, args []string, dir string) *Process {
 		statusC:       make(chan Status),
 		stoppedC:      make(chan int),
 	}
+}
+
+func (p *Process) Environment() map[string]string {
+	result := make(map[string]string)
+	if p.Command != nil && p.Command.Process != nil {
+		for _, kv := range p.Command.Environ() {
+			k, v, found := strings.Cut(kv, "=")
+			if !found {
+				log.Fatalln("take me to your leader")
+			}
+			result[k] = v
+		}
+	}
+	return result
 }
 
 // Restart conditionally calls Process.Stop if Process is running before calling Process.Start.
