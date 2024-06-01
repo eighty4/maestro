@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/eighty4/maestro/composable"
-	"os"
+	"log"
 )
 
 func orchestrateProject(cfg *Config) error {
@@ -43,19 +43,24 @@ func NewOrchestrateProjectJob(cfg *Config) (OrchestrateProjectJob, error) {
 }
 
 func (j *OrchestrateProjectJob) start() error {
-	var composables []composable.Composable
+	var pkgCompositions []*composable.Composition
 	for _, pkg := range j.cfg.Packages {
-		for _, cmd := range pkg.commands {
-			if cmd.Archetype == "docker.compose" {
-				fmt.Println("Orchestrating docker.compose has not been implemented")
-				os.Exit(1)
-			}
-			composables = append(composables, cmd.Exec.Process())
-		}
+		pkgCompositions = append(pkgCompositions, j.createPackageComposition(pkg))
 	}
+	var composables []composable.Composable
 	j.composition = composable.NewComposition(composables)
 	j.composition.Start()
-	for {
-		select {}
+	startApiEndpoint(j.composition)
+	return nil
+}
+
+func (j *OrchestrateProjectJob) createPackageComposition(pkg *Package) *composable.Composition {
+	var composables []composable.Composable
+	for _, cmd := range pkg.commands {
+		if cmd.Archetype == "docker.compose" {
+			log.Fatalln("Orchestrating docker.compose has not been implemented")
+		}
+		composables = append(composables, cmd.Exec.Process())
 	}
+	return composable.NewComposition(composables)
 }
