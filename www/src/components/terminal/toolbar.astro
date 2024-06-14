@@ -1,0 +1,18 @@
+---
+import Button from './button.astro'
+---
+
+<div class="terminal-toolbar">
+    <Button color="red"/>
+    <Button color="yellow"/>
+    <Button color="green"/>
+</div>
+
+<style>
+    .terminal-toolbar {
+        display: flex;
+        flex-direction: row;
+        gap: .5rem;
+        height: 2rem;
+    }
+</style>

@@ -1,0 +1,82 @@
+<nav id="top-nav">
+    <!--<div class="link">-->
+    <!--    <a class="fancy" href="https://github.com/eighty4/maestro">Docs</a>-->
+    <!--</div>-->
+    <div class="link">
+        <a class="fancy" href="https://github.com/eighty4/maestro">Source</a>
+    </div>
+    <div class="link">
+        <a class="fancy" href="#setup">Get Started</a>
+    </div>
+</nav>
+
+<nav id="feature-nav">
+    <div class="link">
+        <a href="#synchronize">Synchronize workspaces</a>
+    </div>
+    <div class="link">
+        <a href="#compose">Compose development</a>
+    </div>
+    <div class="link">
+        <a href="#orchestrate">Orchestrate systems</a>
+    </div>
+</nav>
+
+<header>
+    <h1>maestro --better-dx</h1>
+</header>
+
+<style>
+    #top-nav {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        height: var(--nav-height);
+        border-bottom: var(--terminal-border);
+        background: var(--terminal-bg-color);
+        display: flex;
+        justify-content: space-evenly;
+        gap: 3rem;
+        z-index: 2;
+    }
+
+    #top-nav .link {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #feature-nav {
+        top: calc(var(--nav-height) + 1px);
+        position: sticky;
+        padding-top: 1rem;
+    }
+
+    #feature-nav .link {
+        display: inline-block;
+        background: var(--terminal-bg-color);
+        border: var(--terminal-border);
+        padding: .5rem .8rem;
+        border-radius: 1rem;
+        margin-left: 1rem;
+    }
+
+    #feature-nav .link a {
+        text-decoration: none;
+        font-size: .9rem;
+    }
+
+    header {
+        height: calc(var(--header-height) - var(--nav-height));
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    h1 {
+        font-family: "Ibm Plex Mono", monospace;
+        font-size: 3rem;
+        width: 100%;
+        text-align: center;
+    }
+</style>

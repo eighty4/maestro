@@ -1,0 +1,76 @@
+:root {
+    --bg-color: #111;
+    --color-green: #18C132;
+    --color-red: #ff5f58;
+    --color-yellow: #ffbd2e;
+    --terminal-bg-color: #222;
+    --terminal-border: 1px solid var(--terminal-border-color);
+    --terminal-border-color: #444;
+
+    --card-height: 40vh;
+    --card-width: 50vh;
+}
+
+@font-face {
+    font-display: swap;
+    font-family: Inter;
+    font-weight: 400 700;
+    src: url("/fonts/inter-latin-400-normal.woff2") format("woff2"),
+    url("/fonts/inter-latin-400-normal.woff") format("woff"),
+    url("/fonts/inter-latin-700-normal.woff2") format("woff2"),
+    url("/fonts/inter-latin-700-normal.woff") format("woff")
+}
+
+@font-face {
+    font-display: swap;
+    font-family: "Ibm Plex Mono";
+    font-weight: 400 700;
+    src: url("/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"),
+    url("/fonts/ibm-plex-mono-latin-400-normal.woff") format("woff"),
+    url("/fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2"),
+    url("/fonts/ibm-plex-mono-latin-700-normal.woff") format("woff")
+}
+
+html {
+    background: var(--terminal-bg-color);
+}
+
+body {
+    background: var(--bg-color);
+    font-family: Inter, sans-serif;
+    color: #eee;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: currentColor;
+}
+
+a.fancy {
+    --hov: 0;
+    display: inline-block;
+    position: relative;
+    padding: 0 2px;
+    color: currentColor;
+    text-decoration: none;
+    isolation: isolate;
+}
+
+a.fancy:hover {
+    --hov: 1;
+}
+
+a.fancy::after {
+    position: absolute;
+    inset: 0;
+    background: currentcolor;
+    clip-path: inset(calc((1 - var(--hov)) * (100% - 2px)) 0 0);
+    mix-blend-mode: difference;
+    transition: clip-path .35s ease-out;
+    pointer-events: none;
+    content: ''
+}

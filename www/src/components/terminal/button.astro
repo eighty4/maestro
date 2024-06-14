@@ -1,0 +1,36 @@
+---
+type Props = {
+    color: 'red' | 'yellow' | 'green'
+}
+
+const {color} = Astro.props
+
+const colorClass = {
+    red: color === 'red',
+    yellow: color === 'yellow',
+    green: color === 'green',
+}
+---
+
+<div class:list={[colorClass]}></div>
+
+<style>
+    div {
+        width: .8rem;
+        height: .8rem;
+        border-radius: 50%;
+        background: var(--bg);
+    }
+
+    .red {
+        --bg: var(--color-red);
+    }
+
+    .yellow {
+        --bg: var(--color-yellow);
+    }
+
+    .green {
+        --bg: var(--color-green);
+    }
+</style>

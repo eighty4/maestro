@@ -1,0 +1,89 @@
+<footer>
+    <div class="content">
+        <div class="project-links">
+            <div class="project-type">
+                <h3>Apps</h3>
+                <ul>
+                    <li><a class="fancy" href="https://install.eighty4.tech">Install.sh</a></li>
+                    <li><a class="fancy" href="https://github.com/eighty4/qwerky">Qwerky</a></li>
+                </ul>
+            </div>
+            <div class="project-type">
+                <h3>Dx</h3>
+                <ul>
+                    <li><a class="fancy" href="https://github.com/eighty4/cquill">CQuill</a></li>
+                    <li><a class="fancy" href="https://github.com/eighty4/l3">L3</a></li>
+                    <li><a class="fancy" href="https://github.com/eighty4/velcro">Velcro</a></li>
+                    <li><a class="fancy" href="https://github.com/eighty4/velcro2">Velcro 2</a></li>
+                </ul>
+            </div>
+            <div class="project-type">
+                <h3>Libs</h3>
+                <ul>
+                    <li><a class="fancy" href="https://github.com/eighty4/libtab">Libtab</a></li>
+                    <li><a class="fancy" href="https://github.com/eighty4/databases">@eighty4/databases</a></li>
+                </ul>
+            </div>
+        </div>
+        <!--<div class="project-links">-->
+        <!--    <div>-->
+        <!--        <h3>Eighty4</h3>-->
+        <!--        <ul>-->
+        <!--            <li><a class="fancy" href="https://eighty4.tech/learning">Learning</a></li>-->
+        <!--            <li><a class="fancy" href="https://eighty4.tech/mentoring">Mentoring</a></li>-->
+        <!--        </ul>-->
+        <!--    </div>-->
+        <!--</div>-->
+        <div class="social-media-links">
+            <a href="https://eighty4.tech"><img alt="eighty4.tech" src="/84.svg" width="48" height="48"/></a>
+            <a href="https://github.com/eighty4"><img alt="eighty4 on GitHub" src="/icons/github.svg" width="48" height="48"/></a>
+            <a href="https://x.com/mckee_plus_plus"><img alt="mckee_plus_plus on X" src="/icons/x.svg" width="48" height="48"/></a>
+        </div>
+    </div>
+</footer>
+
+<style>
+    footer {
+        min-height: 45vh;
+        padding: 5rem 0;
+        background: var(--terminal-bg-color);
+        border-top: var(--terminal-border);
+        display: flex;
+        justify-content: center;
+    }
+
+    footer .content {
+        width: 80vw;
+        max-width: 960px;
+        display: flex;
+        gap: 5rem;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    h3 {
+        font-weight: 600;
+        margin-bottom: .5rem;
+    }
+
+    .project-links ul {
+        padding-left: .75rem;
+    }
+
+    .project-links li {
+        list-style-type: none;
+    }
+
+    .project-links li + li {
+        margin-top: .5rem;
+    }
+
+    .project-type + .project-type {
+        margin-top: 1.5rem;
+    }
+
+    .social-media-links {
+        display: flex;
+        gap: 1rem;
+    }
+</style>

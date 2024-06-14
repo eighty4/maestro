@@ -1,0 +1,84 @@
+---
+import Footer from '@maestro/www/components/footer.astro'
+import Header from '@maestro/www/components/header.astro'
+import QuickstartInstructions from '@maestro/www/components/install/quickstart.astro'
+import TerminalToolbar from '@maestro/www/components/terminal/toolbar.astro'
+import TerminalCard from '@maestro/www/components/terminal/card.astro'
+import '@maestro/www/global.css'
+---
+
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="description"
+          content="A developer utility improving workspace, repository and development environment workflows"/>
+    <link href="/84.svg" rel="icon" type="image/svg+xml"/>
+    <link href="/favicon.ico" rel="icon" sizes="any"/>
+    <link href="/manifest.json" rel="manifest"/>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-400-normal.woff2" crossorigin="anonymous"/>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/ibm-plex-mono-latin-400-normal.woff2"
+          crossorigin="anonymous"/>
+    <meta name="viewport" content="width=device-width"/>
+    <meta name="generator" content={Astro.generator}/>
+    <title>maestro developer utility</title>
+</head>
+<body>
+
+<Header/>
+
+<section id="setup">
+    <QuickstartInstructions/>
+</section>
+
+<div id="buttons">
+    <TerminalToolbar/>
+</div>
+
+<div id="synchronize" class="feature">
+    <TerminalCard>
+        <p>maestro git</p>
+    </TerminalCard>
+</div>
+
+<div id="compose" class="feature">
+    <TerminalCard>
+        <p>maestro -c</p>
+    </TerminalCard>
+</div>
+
+<div id="orchestrate" class="feature">
+    <TerminalCard>
+        <p>maestro</p>
+    </TerminalCard>
+</div>
+
+<Footer/>
+
+</body>
+</html>
+
+<style>
+    :root {
+        --header-height: 30vh;
+        --nav-height: 4rem;
+    }
+
+    #setup {
+        height: 40vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #buttons {
+        height: 30vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .feature {
+        height: 100vh;
+        padding: 10rem;
+    }
+</style>

@@ -1,0 +1,12 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@maestro/www/*": ["src/*"]
+    },
+    "types": [
+      "src/env.d.ts"
+    ]
+  }
+}

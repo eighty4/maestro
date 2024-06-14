@@ -1,0 +1,46 @@
+<div id="quickstart" class="hide">
+    <div class="unix instructions">
+        <h3>Install on Linux or OSX!</h3>
+        <pre><code>curl -fsSL https://maestro.eighty4.tech/install.sh | sh</code></pre>
+        <p>The <a class="fancy" href="https://github.com/eighty4/maestro/blob/main/www/install.sh">script</a> installs
+            from <a class="fancy" href="https://github.com/eighty4/maestro/releases/latest">GitHub releases</a>.</p>
+    </div>
+    <div class="windows instructions">
+        <h3>Install maestro on Windows</h3>
+        <p>Windows ARM and Intel binaries are published to GitHub at <a class="fancy"
+                                                                        href="https://github.com/eighty4/maestro/releases/latest">eighty4/maestro</a>.
+        </p>
+    </div>
+    <div class="instructions">
+        <h3>Install from source with go 1.19 or later</h3>
+        <pre><code>curl -fsSL https://maestro.eighty4.tech/install.sh | sh</code></pre>
+    </div>
+</div>
+
+<script>
+    const unixBased = !(navigator?.userAgentData?.platform || navigator.platform)
+        .toLowerCase()
+        .startsWith('win')
+    const quickstart = document.getElementById('quickstart')!
+    quickstart.querySelector(`.instructions.${unixBased ? 'windows' : 'unix'}`)!.remove()
+    quickstart.classList.remove('hide')
+</script>
+
+<style>
+    #quickstart {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .hide .instructions {
+        display: none;
+    }
+
+    .instructions {
+        width: 30rem;
+        max-width: 100vw;
+    }
+</style>
