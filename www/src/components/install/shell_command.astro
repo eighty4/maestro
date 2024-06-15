@@ -1,0 +1,76 @@
+---
+import Content from '@maestro/www/components/terminal/content.astro'
+---
+
+<Content>
+    <div class="shell-command">
+        <pre><code><slot/></code></pre>
+        <div class="copy" style="margin: 0;"></div>
+    </div>
+</Content>
+
+<script>
+    for (const shellCommand of document.querySelectorAll('.shell-command')) {
+        const codeElem = shellCommand.querySelector('code') as HTMLElement
+        const copyButton = shellCommand.querySelector('.copy') as HTMLElement
+        const clearCopied = (elem: Element) => elem.classList.replace('copied', 'copy')
+        shellCommand.addEventListener('mouseenter', () => clearCopied(copyButton))
+        shellCommand.addEventListener('click', () => {
+            document.querySelectorAll('.copied').forEach(clearCopied)
+            copyButton.classList.replace('copy', 'copied')
+            navigator.clipboard.writeText(codeElem.innerText).then()
+        })
+    }
+</script>
+
+<style>
+    .shell-command {
+        display: flex;
+        gap: 1rem;
+        padding: .5rem;
+        cursor: pointer;
+    }
+
+    code {
+        line-height: 1.5rem;
+        letter-spacing: .025rem;
+        font-size: 1rem;
+        padding: .2rem .4rem;
+        transition: .15s color ease-in-out;
+    }
+
+    .shell-command:hover code {
+        color: #fff;
+    }
+
+    .shell-command:hover .copy, .shell-command:hover .copied {
+        scale: 120%;
+    }
+
+    .shell-command:hover .copy {
+        background-color: var(--color-green);
+    }
+
+    .copy, .copied {
+        width: 1.5rem;
+        height: 1.5rem;
+        mask-repeat: no-repeat;
+        -webkit-mask-repeat: no-repeat;
+        mask-size: 1.5rem;
+        -webkit-mask-size: 1.5rem;
+        cursor: pointer;
+        transition: .15s all ease-in-out;
+    }
+
+    .copy {
+        mask-image: url('/icons/copy.svg');
+        -webkit-mask-image: url('/icons/copy.svg');
+        background-color: var(--color-yellow);
+    }
+
+    .copied {
+        mask-image: url('/icons/copied.svg');
+        -webkit-mask-image: url('/icons/copied.svg');
+        background-color: var(--color-red);
+    }
+</style>
