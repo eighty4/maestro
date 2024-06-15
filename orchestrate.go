@@ -43,18 +43,17 @@ func NewOrchestrateProjectJob(cfg *Config) (OrchestrateProjectJob, error) {
 }
 
 func (j *OrchestrateProjectJob) start() error {
-	var pkgCompositions []*composable.Composition
-	for _, pkg := range j.cfg.Packages {
-		pkgCompositions = append(pkgCompositions, j.createPackageComposition(pkg))
-	}
 	var composables []composable.Composable
+	for _, pkg := range j.cfg.Packages {
+		composables = append(composables, j.createPackageComposables(pkg)...)
+	}
 	j.composition = composable.NewComposition(composables)
 	j.composition.Start()
 	startApiEndpoint(j.composition)
 	return nil
 }
 
-func (j *OrchestrateProjectJob) createPackageComposition(pkg *Package) *composable.Composition {
+func (j *OrchestrateProjectJob) createPackageComposables(pkg *Package) []composable.Composable {
 	var composables []composable.Composable
 	for _, cmd := range pkg.commands {
 		if cmd.Archetype == "docker.compose" {
@@ -62,5 +61,5 @@ func (j *OrchestrateProjectJob) createPackageComposition(pkg *Package) *composab
 		}
 		composables = append(composables, cmd.Exec.Process())
 	}
-	return composable.NewComposition(composables)
+	return composables
 }
