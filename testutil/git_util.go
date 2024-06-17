@@ -67,7 +67,21 @@ func GitAdd(t *testing.T, dir string, name string) {
 
 func AddAndCommit(t *testing.T, dir string, name string) {
 	GitAdd(t, dir, name)
-	gitCommitCmd := exec.Command("git", "commit", "-m", fmt.Sprintf(`"%s"`, name))
+	commit(t, dir, name, false)
+}
+
+func AddAndAmendCommit(t *testing.T, dir string, name string) {
+	GitAdd(t, dir, name)
+	commit(t, dir, name, true)
+}
+
+func commit(t *testing.T, dir string, name string, amend bool) {
+	var args []string
+	args = append(args, "commit", "-m", fmt.Sprintf(`"%s"`, name))
+	if amend {
+		args = append(args, "--amend")
+	}
+	gitCommitCmd := exec.Command("git", args...)
 	gitCommitCmd.Dir = dir
 	var gitCommitCmdStderr bytes.Buffer
 	gitCommitCmd.Stderr = &gitCommitCmdStderr
