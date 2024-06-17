@@ -3,9 +3,9 @@ module github.com/eighty4/maestro/git
 go 1.22.1
 
 require (
-	github.com/eighty4/maestro/testutil v0.0.0-20240320195438-756364b3a020
-	github.com/eighty4/maestro/util v0.0.0-20240320195438-756364b3a020
-	github.com/stretchr/testify v1.8.1
+	github.com/eighty4/maestro/testutil v1.0.3-0.20240617174529-cca9732cd4d3
+	github.com/eighty4/maestro/util v1.0.2
+	github.com/stretchr/testify v1.9.0
 )
 
 require (

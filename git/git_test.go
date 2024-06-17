@@ -19,9 +19,9 @@ func TestMain(m *testing.M) {
 }
 
 func gitIntegrationTest(t *testing.T) {
-	if os.Getenv("MAESTRO_TEST_GIT") != "true" {
-		t.Skip("skipping git integration tests")
-	}
+	//if os.Getenv("MAESTRO_TEST_GIT") != "true" {
+	//	t.Skip("skipping git integration tests")
+	//}
 }
 
 func skipOnCi(t *testing.T) {
@@ -594,6 +594,7 @@ func TestStatus_NoLocalCommits(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 0, s.LocalCommits)
 }
 
@@ -607,7 +608,25 @@ func TestStatus_WithLocalCommits(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 2, s.LocalCommits)
+	assert.Equal(t, 0, s.StagedChanges)
+	assert.Equal(t, 0, s.UnstagedChanges)
+	assert.Equal(t, 0, s.UntrackedFiles)
+}
+
+func TestStatus_WithDivergedBranches(t *testing.T) {
+	gitIntegrationTest(t)
+	dir := testutil.MkTmpDir(t)
+	defer testutil.RmDir(t, dir)
+	testutil.CloneRepo(t, dir, "https://github.com/eighty4/sse")
+	testutil.MkFile(t, dir, "newFile")
+	testutil.AddAndAmendCommit(t, dir, "newFile")
+
+	s, err := Status(dir)
+	assert.Nil(t, err)
+	assert.Equal(t, true, s.BranchesDiverged)
+	assert.Equal(t, 0, s.LocalCommits)
 	assert.Equal(t, 0, s.StagedChanges)
 	assert.Equal(t, 0, s.UnstagedChanges)
 	assert.Equal(t, 0, s.UntrackedFiles)
@@ -629,6 +648,7 @@ func TestStatus_WithStagedChanges(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 0, s.LocalCommits)
 	assert.Equal(t, 2, s.StagedChanges)
 	assert.Equal(t, 0, s.UnstagedChanges)
@@ -649,6 +669,7 @@ func TestStatus_WithUnstagedChanges(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 0, s.LocalCommits)
 	assert.Equal(t, 0, s.StagedChanges)
 	assert.Equal(t, 2, s.UnstagedChanges)
@@ -665,6 +686,7 @@ func TestStatus_WithUntrackedFiles(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 0, s.LocalCommits)
 	assert.Equal(t, 0, s.StagedChanges)
 	assert.Equal(t, 0, s.UnstagedChanges)
@@ -688,6 +710,7 @@ func TestStatus_WithAllStateTypes(t *testing.T) {
 
 	s, err := Status(dir)
 	assert.Nil(t, err)
+	assert.Equal(t, false, s.BranchesDiverged)
 	assert.Equal(t, 1, s.LocalCommits)
 	assert.Equal(t, 1, s.StagedChanges)
 	assert.Equal(t, 1, s.UnstagedChanges)

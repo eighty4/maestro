@@ -57,10 +57,11 @@ type PullUpdate struct {
 
 // RepoState holds data from `git status` and is available with git.Status.
 type RepoState struct {
-	LocalCommits    int
-	StagedChanges   int
-	UnstagedChanges int
-	UntrackedFiles  int
+	BranchesDiverged bool
+	LocalCommits     int
+	StagedChanges    int
+	UnstagedChanges  int
+	UntrackedFiles   int
 }
 
 type StashedChangeset struct {
@@ -346,9 +347,12 @@ func Status(dir string) (*RepoState, error) {
 			return nil, err
 		}
 	}
+	diverged := false
 	var tracking string
 	for _, line := range lines {
-		if strings.Index(line, "Changes to be committed") == 0 {
+		if strings.Contains(line, "have diverged") {
+			diverged = true
+		} else if strings.Index(line, "Changes to be committed") == 0 {
 			tracking = "staged"
 		} else if strings.Index(line, "Changes not staged for commit") == 0 {
 			tracking = "unstaged"
@@ -377,10 +381,11 @@ func Status(dir string) (*RepoState, error) {
 		}
 	}
 	repoState := &RepoState{
-		LocalCommits:    localCommits,
-		StagedChanges:   stagedChanges,
-		UnstagedChanges: unstagedChanges,
-		UntrackedFiles:  untrackedFiles,
+		BranchesDiverged: diverged,
+		LocalCommits:     localCommits,
+		StagedChanges:    stagedChanges,
+		UnstagedChanges:  unstagedChanges,
+		UntrackedFiles:   untrackedFiles,
 	}
 	return repoState, nil
 }

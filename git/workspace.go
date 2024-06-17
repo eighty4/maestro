@@ -149,6 +149,10 @@ func (w *Workspace) Sync(syncOptions *SyncOptions) <-chan *SyncUpdate {
 							status = SyncWarning
 							messages = append(messages, fmt.Sprintf("%d local %s (%s)", localChangesCount, util.PluralPrint("change", localChangesCount), strings.Join(localChangesDetail, ", ")))
 						}
+						if s.RepoState.BranchesDiverged {
+							status = SyncWarning
+							messages = append(messages, "local and remote HAVE DIVERGED!")
+						}
 					} else {
 						localChangesCount += s.RepoState.StagedChanges + s.RepoState.UnstagedChanges + s.RepoState.UntrackedFiles
 						if localChangesCount > 0 {
@@ -161,13 +165,10 @@ func (w *Workspace) Sync(syncOptions *SyncOptions) <-chan *SyncUpdate {
 						status = SyncWarning
 						messages = append(messages, fmt.Sprintf("%d stashed %s", stashedChangesCount, util.PluralPrint("change", stashedChangesCount)))
 					}
-					var message string
-					if len(messages) > 0 {
-						message = strings.Join(messages, ", ")
-					}
 					if s.Status != Pulled {
 						status = SyncFailure
 					}
+					message := strings.Join(messages, ", ")
 					c <- &SyncUpdate{Repo: repo.Name, Op: PullSync, Status: status, Message: message, Error: s.Error}
 					wg.Done()
 					return
