@@ -137,11 +137,16 @@ func gitSync(cfg *Config) {
 			syncErrorCount++
 			break
 		}
-		message := s.Error
 		if willNetworkError || s.Error == "" {
-			message = s.Message
+			// print status without error
+			fmt.Printf(fmtStr, s.Repo, checkOrX, s.Message)
+		} else {
+			// print error with status
+			fmt.Printf(fmtStr, s.Repo, checkOrX, s.Error)
+			if len(s.Message) > 0 {
+				fmt.Printf(fmtStr, "", up.yellowExclamation, s.Message)
+			}
 		}
-		fmt.Printf(fmtStr, s.Repo, checkOrX, message)
 	}
 
 	println(fmt.Sprintf("Syncing %d repositories", len(ws.Repositories)))
@@ -169,9 +174,10 @@ func hasInternetConnection() bool {
 }
 
 type UnicodePrinting struct {
-	greenCheck  string
-	yellowCheck string
-	redX        string
+	greenCheck        string
+	yellowCheck       string
+	yellowExclamation string
+	redX              string
 }
 
 func NewUnicodePrinting() UnicodePrinting {
@@ -183,12 +189,10 @@ func NewUnicodePrinting() UnicodePrinting {
 		return result
 	}
 	check := unquoteCodePoint("\\U00002714")
-	greenCheck := color.New(color.FgGreen, color.Bold).Sprint(check)
-	yellowCheck := color.New(color.FgYellow, color.Bold).Sprint(check)
-	redX := color.New(color.FgRed, color.Bold).Sprint(unquoteCodePoint("\\U00002715"))
 	return UnicodePrinting{
-		greenCheck:  greenCheck,
-		yellowCheck: yellowCheck,
-		redX:        redX,
+		greenCheck:        color.New(color.FgGreen, color.Bold).Sprint(check),
+		yellowCheck:       color.New(color.FgYellow, color.Bold).Sprint(check),
+		yellowExclamation: color.New(color.FgYellow, color.Bold).Sprint("!"),
+		redX:              color.New(color.FgRed, color.Bold).Sprint(unquoteCodePoint("\\U00002715")),
 	}
 }
