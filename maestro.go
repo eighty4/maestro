@@ -8,13 +8,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+    "slices"
 	"strconv"
 )
 
 const cmdMenuPreCompose = `Maestro --better-dx
 
   maestro git                sync a workspace of repositories
-    --detail-local-changes   print excessive details about repos`
+    --detail-local-changes   print excessive details about repos
+    --offline                print repo statuses without syncing`
 
 const cmdMenu = `Maestro --better-dx
 
@@ -23,7 +25,8 @@ const cmdMenu = `Maestro --better-dx
     -l, --ls                 list orchestrated commands
 
   maestro git                sync a workspace of repositories
-    --detail-local-changes   print excessive details about repos`
+    --detail-local-changes   print excessive details about repos
+    --offline                print repo statuses without syncing`
 
 func main() {
 	if util.IsDebug() {
@@ -79,20 +82,28 @@ func isArgSet(short string, long string) bool {
 }
 
 func gitSyncOptions() *git.SyncOptions {
-	dlcEnvVar := os.Getenv("MAESTRO_DETAIL_LOCAL_CHANGES")
+    validBoolFlags := []string{"true", "false", "1", "0"}
 	syncOptions := &git.SyncOptions{}
+    dlcEnvVar := os.Getenv("MAESTRO_DETAIL_LOCAL_CHANGES")
 	if len(dlcEnvVar) > 0 {
-		if dlcEnvVar == "true" {
-			syncOptions.DetailLocalChanges = true
-		} else if dlcEnvVar == "false" {
-			syncOptions.DetailLocalChanges = false
-		} else {
-			fmt.Println("MAESTRO_DETAIL_LOCAL_CHANGES must be a true or false value")
-			os.Exit(1)
-		}
+        if !slices.Contains(validBoolFlags, dlcEnvVar) {
+            fmt.Println("MAESTRO_DETAIL_LOCAL_CHANGES must be a true or false value")
+            os.Exit(1)
+        }
+        syncOptions.DetailLocalChanges = dlcEnvVar == "true" || dlcEnvVar == "1"
 	} else {
-		syncOptions.DetailLocalChanges = len(os.Args) > 2 && os.Args[2] == "--detail-local-changes"
+        syncOptions.DetailLocalChanges = slices.Contains(os.Args, "--detail-local-changes")
 	}
+    offlineEnvVar := os.Getenv("MAESTRO_OFFLINE")
+    if len(offlineEnvVar) > 0 {
+        if !slices.Contains(validBoolFlags, offlineEnvVar) {
+            fmt.Println("MAESTRO_OFFLINE must be a true or false value")
+            os.Exit(1)
+        }
+        syncOptions.Offline = offlineEnvVar == "true" || offlineEnvVar == "1"
+    } else {
+        syncOptions.Offline = slices.Contains(os.Args, "--offline")
+    }
 	return syncOptions
 }
 
@@ -150,16 +161,19 @@ func gitSync(cfg *Config) {
 	}
 
 	println(fmt.Sprintf("Syncing %d repositories", len(ws.Repositories)))
-	c := ws.Sync(gitSyncOptions())
+    opts := gitSyncOptions()
+	c := ws.Sync(opts)
 	for {
 		update, ok := <-c
 		if ok {
 			printStatusUpdate(update)
 		} else {
-			if !willNetworkError && syncErrorCount != len(ws.Repositories) {
+            if opts.Offline {
+                fmt.Printf("No repositories synced in %s.\n", color.New(color.Bold).Sprint("offline mode"))
+            } else if !willNetworkError && syncErrorCount != len(ws.Repositories) {
 				println("Done!")
 			} else if willNetworkError {
-				println("No repositories were synced due to network connectivity.")
+                fmt.Printf("No repositories synced due to %s.\n", color.New(color.Bold).Sprint("network connectivity"))
 			} else {
 				println("No repositories were synced.")
 			}

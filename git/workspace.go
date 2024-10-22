@@ -33,6 +33,7 @@ type SyncUpdate struct {
 
 type SyncOptions struct {
 	DetailLocalChanges bool
+    Offline            bool
 }
 
 // Workspace represents a local directory structure of git repositories.
