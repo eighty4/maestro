@@ -23,13 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: prep pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-      - name: pnpm i
-        run: pnpm i
+          node-version: 22
+          cache: pnpm
+      - run: pnpm i
         working-directory: frontend
       - name: vitest
         run: pnpm test
@@ -39,13 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: prep pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-      - name: pnpm i
-        run: pnpm i
+          node-version: 22
+          cache: pnpm
+      - run: pnpm i
         working-directory: frontend
       - name: svelte-check
         run: pnpm check
@@ -55,13 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: prep pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-      - name: pnpm i
-        run: pnpm i
+          node-version: 22
+          cache: pnpm
+      - run: pnpm i
         working-directory: frontend
       - name: vite
         run: pnpm build
