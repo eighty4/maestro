@@ -1,0 +1,19 @@
+[workspace]
+members = ["cli", "git"]
+resolver = "2"
+
+[workspace.dependencies]
+anyhow = "1.0.97"
+thiserror = "2.0.12"
+tokio = { version = "1.43.0", features = [
+    "macros",
+    "rt",
+    "sync",
+    "rt-multi-thread",
+] }
+
+[workspace.package]
+authors = ["Adam McKee <adam.be.g84d@gmail.com>"]
+edition = "2021"
+license = "BSD-2-Clause"
+repository = "https://github.com/eighty4/maestro"

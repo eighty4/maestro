@@ -1,0 +1,10 @@
+[package]
+name = "maestro_git"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+git2 = "0.20.0"
+thiserror = { workspace = true }
+tokio = { workspace = true }
