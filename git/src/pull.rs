@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use git2::{Direction, Oid, RemoteCallbacks};
 use std::path::Path;
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum PullResult {
     DetachedHead,
     Error(String),

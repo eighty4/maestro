@@ -16,7 +16,7 @@ pub async fn print_sync_updates(mut syncing: Sync) {
             PullResult::DetachedHead => "detached head".to_string(),
             PullResult::Error(err_msg) => err_msg,
             PullResult::FastForward(commits) => format!("pulled {commits} commits"),
-            PullResult::UnpullableMerge => "unable to ff merge from remote".to_string(),
+            PullResult::UnpullableMerge => "unable to ff merge fetched commits".to_string(),
             PullResult::UpToDate => "already up to date".to_string(),
         };
         println!(

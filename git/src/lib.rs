@@ -1,6 +1,9 @@
 mod find;
 mod pull;
 
+#[cfg(test)]
+mod pull_test;
+
 use pull::pull_ff;
 use std::path::{Path, PathBuf};
 use tokio::{sync::mpsc::UnboundedReceiver, task::JoinSet};

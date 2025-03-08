@@ -8,3 +8,6 @@ anyhow = { workspace = true }
 git2 = "0.20.0"
 thiserror = { workspace = true }
 tokio = { workspace = true }
+
+[dev-dependencies]
+temp-dir = "0.1.14"
