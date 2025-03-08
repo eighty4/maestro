@@ -1,5 +1,9 @@
 mod find;
+mod host;
 mod pull;
+
+#[cfg(test)]
+mod host_test;
 
 #[cfg(test)]
 mod pull_test;
@@ -9,6 +13,7 @@ use std::path::{Path, PathBuf};
 use tokio::{sync::mpsc::UnboundedReceiver, task::JoinSet};
 
 pub use find::*;
+pub use host::*;
 pub use pull::PullResult;
 
 pub struct WorkspaceRepo {

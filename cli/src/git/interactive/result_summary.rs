@@ -75,14 +75,14 @@ impl Widget for SyncResultWidget<'_> {
             indent.into(),
             indent.into(),
             match pull_result {
-                PullResult::FastForward(_) | PullResult::UpToDate => "✔".green(),
+                PullResult::FastForward { .. } | PullResult::UpToDate => "✔".green(),
                 _ => "✗".red(),
             },
             " ".into(),
             match pull_result {
                 PullResult::DetachedHead => "HEAD is detached.".to_string(),
                 PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
-                PullResult::FastForward(commits) => format!("Pulled {commits} commits."),
+                PullResult::FastForward { commits, .. } => format!("Pulled {commits} commits."),
                 PullResult::UnpullableMerge => {
                     "Unable to ff merge changes from remote.".to_string()
                 }

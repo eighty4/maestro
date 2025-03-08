@@ -9,14 +9,14 @@ pub async fn print_sync_updates(mut syncing: Sync) {
         _done += 1;
         let SyncKind::Pull(pull_result) = result.kind;
         let indicator = match pull_result {
-            PullResult::FastForward(_) | PullResult::UpToDate => "✔".green(),
+            PullResult::FastForward { .. } | PullResult::UpToDate => "✔".green(),
             _ => "✗".red(),
         };
         let text = match pull_result {
             PullResult::DetachedHead => "detached head".to_string(),
             PullResult::Error(err_msg) => err_msg,
-            PullResult::FastForward(commits) => format!("pulled {commits} commits"),
-            PullResult::UnpullableMerge => "unable to ff merge fetched commits".to_string(),
+            PullResult::FastForward { commits, .. } => format!("pulled {commits} commits",),
+            PullResult::UnpullableMerge => "unable to ff merge from remote".to_string(),
             PullResult::UpToDate => "already up to date".to_string(),
         };
         println!(

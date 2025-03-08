@@ -1,14 +1,8 @@
-use std::{
-    fs::{copy, create_dir, read_dir, remove_dir_all, write},
-    io,
-    path::PathBuf,
-    process::Command,
-};
+use std::{fs::write, process::Command};
 
 use temp_dir::TempDir;
-use tokio::sync::OnceCell;
 
-use crate::{PullResult, pull::pull_ff};
+use crate::{PullResult, RemoteHost, pull::pull_ff};
 
 fn create_test_repo() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
@@ -16,7 +10,9 @@ fn create_test_repo() -> TempDir {
         .arg("clone")
         .arg("https://github.com/eighty4/pear.ng")
         .arg(".")
-        .current_dir(temp_dir.path());
+        .current_dir(temp_dir.path())
+        .output()
+        .unwrap();
     temp_dir
 }
 
@@ -53,8 +49,12 @@ fn pull_ff_pulled() {
         PullResult::FastForward {
             branch: "main".to_string(),
             commits: 2,
-            from: "".to_string(),
-            to: "".to_string()
+            from: "e303cea".to_string(),
+            to: "fe98a80".to_string(),
+            remote: RemoteHost::GitHub {
+                owner: "eighty4".to_string(),
+                name: "pear.ng".to_string()
+            }
         }
     );
 }
@@ -69,9 +69,9 @@ fn pull_ff_unpullable() {
         .current_dir(test_repo.path())
         .output()
         .unwrap();
-    let conflict_file = "www/package.json";
+    let conflict_file = "desktop/CMakeLists.txt";
     write(
-        test_repo.join(&conflict_file),
+        test_repo.path().join(&conflict_file),
         "If Jimmy eats world, and no one cares",
     )
     .unwrap();
@@ -81,8 +81,13 @@ fn pull_ff_unpullable() {
         .current_dir(test_repo.path())
         .output()
         .unwrap();
-
-    dbg!("wtf");
+    Command::new("git")
+        .arg("commit")
+        .arg("-m")
+        .arg("conflict")
+        .current_dir(test_repo.path())
+        .output()
+        .unwrap();
 
     let result = pull_ff(test_repo.path());
     assert!(result.is_ok());
@@ -95,21 +100,4 @@ fn pull_ff_up_to_date() {
     let result = pull_ff(test_repo.path());
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), PullResult::UpToDate);
-}
-
-fn copy_recursive(from_dir: &PathBuf, to_dir: &PathBuf) -> io::Result<()> {
-    debug_assert!(from_dir.is_dir());
-    if !to_dir.is_dir() {
-        create_dir(to_dir).unwrap();
-    }
-    for dir_entry in read_dir(from_dir).unwrap() {
-        let from_path = dir_entry.unwrap().path();
-        let to_path = &to_dir.join(from_path.file_name().unwrap());
-        if from_path.is_dir() {
-            copy_recursive(&from_path, &to_path).unwrap();
-        } else {
-            copy(&from_path, &to_path).unwrap();
-        }
-    }
-    Ok(())
 }

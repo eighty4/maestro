@@ -4,12 +4,13 @@ mod result_summary;
 use anyhow::anyhow;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers};
 use futures::{StreamExt, future::FutureExt};
-use maestro_git::{Sync, SyncResult};
+use maestro_git::{PullResult, Sync, SyncKind, SyncResult};
 use ratatui::{
     Frame,
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
     style::Stylize,
+    text::Line,
     widgets::{Paragraph, Widget},
 };
 use result_listing::PagingResults;
@@ -182,6 +183,12 @@ impl InteractiveSync {
             _ => match &self.state {
                 InterfaceState::ResultListing { cursor, page } => match key_event {
                     KeyEvent {
+                        code: KeyCode::Char('d'),
+                        ..
+                    } => {
+                        self.maybe_open_compare_url(cursor);
+                    }
+                    KeyEvent {
                         code: KeyCode::Up, ..
                     } => {
                         if cursor > &page.page_start_index {
@@ -217,6 +224,21 @@ impl InteractiveSync {
             },
         }
     }
+
+    fn maybe_open_compare_url(&self, cursor: &usize) {
+        if let SyncKind::Pull(PullResult::FastForward {
+            remote, from, to, ..
+        }) = &self.results[*cursor].kind
+        {
+            if remote.has_compare_url() {
+                if let Err(err) = open::that_detached(remote.compare_url(from, to)) {
+                    ratatui::restore();
+                    eprintln!("{err}");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
 }
 
 impl Widget for &InteractiveSync {
@@ -241,7 +263,7 @@ impl Widget for &InteractiveSync {
         self.render_header(header_area, buf);
         let InterfaceState::ResultListing { cursor, page } = &self.state;
         self.render_result_listing(cursor, page, content_area, buf);
-        self.render_result_listing_footer(page, footer_area, buf);
+        self.render_result_listing_footer(cursor, page, footer_area, buf);
     }
 }
 
@@ -262,6 +284,7 @@ impl InteractiveSync {
 
     fn render_result_listing_footer(
         &self,
+        cursor: &usize,
         page: &PagingResults,
         padded_area: Rect,
         buf: &mut Buffer,
@@ -270,13 +293,23 @@ impl InteractiveSync {
         let [line1, line2] = Layout::vertical([Constraint::Length(1), Constraint::Length(1)])
             .flex(Flex::SpaceAround)
             .areas(padded_area);
+        let [paging_area, shortcuts_area] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(line1);
         if page.page_count() > 1 {
             Paragraph::new(format!(
                 "Page {} of {}",
                 page.current_page(),
                 page.page_count()
             ))
-            .render(line1, buf);
+            .render(paging_area, buf);
+        }
+        if self.has_compare_url(cursor) {
+            Paragraph::new(Line::from(vec![
+                "d".cyan().bold(),
+                " compare changes".into(),
+            ]))
+            .right_aligned()
+            .render(shortcuts_area, buf);
         }
         if !self.finished {
             Paragraph::new(format!(
@@ -284,6 +317,18 @@ impl InteractiveSync {
                 self.syncing.repos.len() - self.results.len()
             ))
             .render(line2, buf);
+        }
+    }
+
+    fn has_compare_url(&self, cursor: &usize) -> bool {
+        if self.results.is_empty() || *cursor > self.results.len() - 1 {
+            false
+        } else if let SyncKind::Pull(PullResult::FastForward { remote, .. }) =
+            &self.results[*cursor].kind
+        {
+            remote.has_compare_url()
+        } else {
+            false
         }
     }
 

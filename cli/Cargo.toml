@@ -3,11 +3,16 @@ name = "maestro_cli"
 version = "0.0.1"
 edition = "2024"
 
+[[bin]]
+name = "maestro"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.5.31", features = ["derive"] }
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
 maestro_git = { path = "../git" }
+open = "5.3.2"
 ratatui = "0.29.0"
 tokio = { workspace = true }
