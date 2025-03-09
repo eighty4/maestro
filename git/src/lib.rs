@@ -16,6 +16,7 @@ pub use find::*;
 pub use host::*;
 pub use pull::PullResult;
 
+#[derive(Debug)]
 pub struct WorkspaceRepo {
     /// unique id of rel path from workspare root to repo
     pub label: String,
@@ -62,10 +63,12 @@ impl Sync {
     }
 }
 
+#[derive(Debug)]
 pub enum SyncKind {
     Pull(PullResult),
 }
 
+#[derive(Debug)]
 pub struct SyncResult {
     pub repo: WorkspaceRepo,
     pub kind: SyncKind,
