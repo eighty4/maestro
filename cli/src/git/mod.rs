@@ -3,7 +3,7 @@ mod print;
 
 use clap::Parser;
 use interactive::InteractiveSync;
-use maestro_git::{SyncOptions, sync};
+use maestro_git::{sync, SyncOptions};
 use print::print_sync_updates;
 
 use crate::{MaestroCommandRun, MaestroCommandRunResult};

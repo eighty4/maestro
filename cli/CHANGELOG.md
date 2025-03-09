@@ -13,4 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI provides interactive TUI for git pulls
 - CLI git interactive mode launches browser with GitHub compare page
 
-[Unreleased]: https://github.com/eighty4/maestro/commit/HEAD
+[Unreleased]: https://github.com/eighty4/maestro/tree/HEAD

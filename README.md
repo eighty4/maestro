@@ -3,7 +3,7 @@
 Stylish developer workflows.
 
 ```bash
-cargo install maestro_cli
+cargo install maestro
 ```
 
 ## `maestro git [-i, --interactive]`

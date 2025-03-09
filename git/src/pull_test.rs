@@ -1,26 +1,23 @@
 use std::{
     fs::{read_to_string, write},
-    path::Path,
     process::Command,
 };
 
 use temp_dir::TempDir;
 
-use crate::{PullResult, RemoteHost, pull::pull_ff};
+use crate::{pull::pull_ff, PullResult, RemoteHost};
 
 fn create_test_repo() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
-    assert!(
-        Command::new("git")
-            .arg("clone")
-            .arg("https://github.com/eighty4/pear.ng")
-            .arg(".")
-            .current_dir(temp_dir.path())
-            .output()
-            .unwrap()
-            .status
-            .success()
-    );
+    assert!(Command::new("git")
+        .arg("clone")
+        .arg("https://github.com/eighty4/pear.ng")
+        .arg(".")
+        .current_dir(temp_dir.path())
+        .output()
+        .unwrap()
+        .status
+        .success());
     temp_dir
 }
 

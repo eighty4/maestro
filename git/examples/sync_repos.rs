@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use maestro_git::{SyncOptions, find_repos, sync};
+use maestro_git::{find_repos, sync, SyncOptions};
 use temp_dir::TempDir;
 
 #[tokio::main]

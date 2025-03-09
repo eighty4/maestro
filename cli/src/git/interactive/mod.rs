@@ -3,19 +3,19 @@ mod result_summary;
 
 use anyhow::anyhow;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyModifiers};
-use futures::{StreamExt, future::FutureExt};
+use futures::{future::FutureExt, StreamExt};
 use maestro_git::{PullResult, Sync, SyncKind, SyncResult};
 use ratatui::{
-    Frame,
     buffer::Buffer,
     layout::{Constraint, Flex, Layout, Rect},
     style::Stylize,
     text::Line,
     widgets::{Paragraph, Widget},
+    Frame,
 };
 use result_listing::PagingResults;
 use result_summary::{
-    RESULT_SIZE_COMPACT, RESULT_SIZE_FOCUSED, RESULT_SIZE_UNFOCUSED, SyncResultWidget, placeholder,
+    placeholder, SyncResultWidget, RESULT_SIZE_COMPACT, RESULT_SIZE_FOCUSED, RESULT_SIZE_UNFOCUSED,
 };
 
 // header/footer heights include symmetric vertical padding of 1

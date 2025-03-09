@@ -2,8 +2,8 @@ use std::cmp::min;
 use std::ops::Range;
 
 use super::{
-    FOOTER_HEIGHT, HEADER_HEIGHT, InterfaceState, LayoutMode, Size,
     result_summary::{RESULT_SIZE_COMPACT, RESULT_SIZE_FOCUSED, RESULT_SIZE_UNFOCUSED},
+    InterfaceState, LayoutMode, Size, FOOTER_HEIGHT, HEADER_HEIGHT,
 };
 
 #[derive(Clone, Default)]

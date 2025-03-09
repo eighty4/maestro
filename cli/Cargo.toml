@@ -1,12 +1,12 @@
 [package]
-name = "maestro_cli"
+name = "maestro"
 version = "0.0.1"
-edition = "2024"
-
-[profile.release]
-lto = "fat"
-opt-level = 3
-strip = "symbols"
+authors = { workspace = true }
+description = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
 
 [[bin]]
 name = "maestro"
@@ -17,7 +17,7 @@ anyhow = { workspace = true }
 clap = { version = "4.5.31", features = ["derive"] }
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
-maestro_git = { path = "../git" }
+maestro_git = { path = "../git", version = "0.0.1" }
 open = "5.3.2"
 ratatui = "0.29.0"
 tokio = { workspace = true }

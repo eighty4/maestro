@@ -752,7 +752,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "maestro_cli"
+name = "maestro"
 version = "0.0.1"
 dependencies = [
  "anyhow",
