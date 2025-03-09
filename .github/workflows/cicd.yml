@@ -1,0 +1,16 @@
+name: CICD
+run-name: "CICD: ${{ github.event.head_commit.message }}"
+
+on:
+  push:
+    branches: [ 'main' ]
+
+jobs:
+
+  publish-prerelease:
+    uses: ./.github/workflows/publish.yml
+    secrets: inherit
+    permissions:
+      contents: write
+    with:
+      semver-bump: beta

@@ -1,0 +1,44 @@
+name: GH Release
+run-name: Create ${{ inputs.tag }} GitHub release
+
+on:
+  workflow_call:
+    inputs:
+      prerelease:
+        type: string
+        required: true
+      tag:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+
+jobs:
+  create-gh-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create release
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          TAG_NAME: ${{ inputs.tag }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          RELEASE_NOTES=$(./.github/workflows/changelog_get.sh cli/CHANGELOG.md ${{ inputs.version }})
+          CRATES_URL="https://crates.io/crates/maestro/${{ inputs.version }}"
+          echo "[Published on crates.io]($CRATES_URL)\r\n\r\n### Release notes\r\n\r\n$RELEASE_NOTES" > release_notes.md
+          cat release_notes.md
+          ls artifacts | xargs gh release create "${{ inputs.tag }}" \
+            --repo "eighty4/maestro" \
+            ${{ inputs.prerelease == 'true' && '--prerelease' || '' }} \
+            ${{ inputs.prerelease != 'true' && '--latest' || '' }} \
+            --notes-file release_notes.md \
+            --title "Maestro v${{ inputs.version }}"
