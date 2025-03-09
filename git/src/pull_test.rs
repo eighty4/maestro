@@ -1,4 +1,8 @@
-use std::{fs::write, process::Command};
+use std::{
+    fs::{read_to_string, write},
+    path::Path,
+    process::Command,
+};
 
 use temp_dir::TempDir;
 
@@ -6,25 +10,40 @@ use crate::{PullResult, RemoteHost, pull::pull_ff};
 
 fn create_test_repo() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
-    Command::new("git")
-        .arg("clone")
-        .arg("https://github.com/eighty4/pear.ng")
-        .arg(".")
-        .current_dir(temp_dir.path())
-        .output()
-        .unwrap();
+    assert!(
+        Command::new("git")
+            .arg("clone")
+            .arg("https://github.com/eighty4/pear.ng")
+            .arg(".")
+            .current_dir(temp_dir.path())
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
     temp_dir
+}
+
+fn assert_cmd(cmd: &mut Command) {
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
 }
 
 #[test]
 fn pull_ff_detached_head() {
     let test_repo = create_test_repo();
-    Command::new("git")
-        .arg("checkout")
-        .arg("HEAD~1")
-        .current_dir(test_repo.path())
-        .output()
-        .unwrap();
+    assert_cmd(
+        Command::new("git")
+            .arg("checkout")
+            .arg("HEAD~1")
+            .current_dir(test_repo.path()),
+    );
+    assert_cmd(
+        Command::new("git")
+            .arg("checkout")
+            .arg("HEAD~1")
+            .current_dir(test_repo.path()),
+    );
 
     let result = pull_ff(test_repo.path());
     assert!(result.is_ok());
@@ -34,13 +53,13 @@ fn pull_ff_detached_head() {
 #[test]
 fn pull_ff_pulled() {
     let test_repo = create_test_repo();
-    Command::new("git")
-        .arg("reset")
-        .arg("--hard")
-        .arg("HEAD~2")
-        .current_dir(test_repo.path())
-        .output()
-        .unwrap();
+    assert_cmd(
+        Command::new("git")
+            .arg("reset")
+            .arg("--hard")
+            .arg("HEAD~2")
+            .current_dir(test_repo.path()),
+    );
 
     let result = pull_ff(test_repo.path());
     assert!(result.is_ok());
@@ -62,32 +81,33 @@ fn pull_ff_pulled() {
 #[test]
 fn pull_ff_unpullable() {
     let test_repo = create_test_repo();
-    Command::new("git")
-        .arg("reset")
-        .arg("--hard")
-        .arg("HEAD~2")
-        .current_dir(test_repo.path())
-        .output()
-        .unwrap();
-    let conflict_file = "desktop/CMakeLists.txt";
+    assert_cmd(
+        Command::new("git")
+            .arg("reset")
+            .arg("--hard")
+            .arg("HEAD~2")
+            .current_dir(test_repo.path()),
+    );
+    let conflict_file = "desktop/bin/pear_cli/pear_cli.cc";
+    let contents = read_to_string(test_repo.path().join(conflict_file)).unwrap();
     write(
         test_repo.path().join(&conflict_file),
-        "If Jimmy eats world, and no one cares",
+        format!("#include \"net_udp/udp.h\"\n{contents}"),
     )
     .unwrap();
-    Command::new("git")
-        .arg("add")
-        .arg(conflict_file)
-        .current_dir(test_repo.path())
-        .output()
-        .unwrap();
-    Command::new("git")
-        .arg("commit")
-        .arg("-m")
-        .arg("conflict")
-        .current_dir(test_repo.path())
-        .output()
-        .unwrap();
+    assert_cmd(
+        Command::new("git")
+            .arg("add")
+            .arg(conflict_file)
+            .current_dir(test_repo.path()),
+    );
+    assert_cmd(
+        Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg("conflict")
+            .current_dir(test_repo.path()),
+    );
 
     let result = pull_ff(test_repo.path());
     assert!(result.is_ok());

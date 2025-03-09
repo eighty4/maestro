@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 anyhow = { workspace = true }
-git2 = "0.20.0"
+git2 = { version = "0.20.0", features = ["ssh", "vendored-libgit2"] }
+openssl = { version = "0.10.71", features = ["vendored"] }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 

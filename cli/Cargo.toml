@@ -3,6 +3,11 @@ name = "maestro_cli"
 version = "0.0.1"
 edition = "2024"
 
+[profile.release]
+lto = "fat"
+opt-level = 3
+strip = "symbols"
+
 [[bin]]
 name = "maestro"
 path = "src/main.rs"

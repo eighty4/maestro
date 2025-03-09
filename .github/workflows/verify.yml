@@ -1,0 +1,140 @@
+name: Verify
+
+on:
+  push:
+    branches: [ '*' ]
+    paths:
+      - .github/workflows/verify.yml
+      - cli/**/*
+      - git/**/*
+      - Cargo.*
+  pull_request:
+    branches: [ '*' ]
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+
+  verify:
+    runs-on: ubuntu-latest
+    needs:
+      - build-cli-linux-and-macos
+      - build-cli-windows
+      - examples
+      - fmt
+      - lint
+      - test
+    steps:
+      - run: echo "Do you believe that Maestro?"
+
+  build-cli-linux-and-macos:
+    name: "build ${{ matrix.filename}}"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - filename: maestro-linux-x86_64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - filename: maestro-linux-aarch64
+            runner: ubuntu-24.04
+            target: aarch64-unknown-linux-gnu
+            apt_package_linker: gcc-aarch64-linux-gnu
+          - filename: maestro-macos-x86_64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+          - filename: maestro-macos-aarch64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+      - if: ${{ matrix.apt_package_linker }}
+        run: |
+          sudo apt update && sudo apt install ${{ matrix.apt_package_linker }}
+          mkdir -p $HOME/.cargo
+          mv ./.github/workflows/linkers.toml $HOME/.cargo/config.toml
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - run: rustup target add ${{ matrix.target }}
+      - name: build
+        run: cargo build --release --target ${{ matrix.target }}
+      - run: mv target/${{ matrix.target }}/release/maestro ${{ matrix.filename }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.filename }}
+          path: ${{ matrix.filename }}
+
+  build-cli-windows:
+    name: "build ${{ matrix.filename}}"
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        include:
+          - filename: maestro-windows-aarch64.exe
+            target: aarch64-pc-windows-msvc
+          - filename: maestro-windows-x86_64.exe
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - run: rustup target add  ${{ matrix.target }}
+      - name: build
+        shell: powershell
+        run: cargo build -p maestro_cli --release --target ${{ matrix.target }}
+      - run: Move-Item -Path "target/${{ matrix.target }}/release/maestro.exe" -Destination "${{ matrix.filename }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.filename }}
+          path: ${{ matrix.filename }}
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+      - name: cargo build
+        run: |
+          cargo run --example sync_repos
+        working-directory: git
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+      - name: cargo fmt
+        run: cargo fmt --all -v
+      - run: git diff --exit-code
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+      - run: cargo clippy --all -- -D warnings
+
+  test:
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - name: git config
+        run: |
+          git config --global user.name "Your Name"
+          git config --global user.email "you@example.com"
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.runner }}
+      - name: cargo test
+        run: cargo test --workspace
