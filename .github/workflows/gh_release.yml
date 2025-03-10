@@ -28,7 +28,7 @@ jobs:
       - name: Create release
         id: create
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ inputs.tag }}
           VERSION: ${{ inputs.version }}
         run: |
