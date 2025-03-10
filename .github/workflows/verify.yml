@@ -1,8 +1,9 @@
 name: Verify
+run-name: "Verify: ${{ github.event.head_commit.message || github.workflow_dispatch.ref }}"
 
 on:
   push:
-    branches-ignore: [ 'main' ]
+    branches: [ '*' ]
   pull_request:
     branches: [ '*' ]
   workflow_call:
@@ -20,7 +21,7 @@ jobs:
       - lint
       - test
     steps:
-      - run: echo "Do you believe that Maestro?"
+      - run: echo "Do you believe this Maestro?"
 
   build-linux-and-macos:
     name: "build ${{ matrix.filename}}"

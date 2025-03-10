@@ -2,11 +2,6 @@ name: Publish
 run-name: Create ${{ inputs.semver-bump }} release
 
 on:
-  workflow_call:
-    inputs:
-      semver-bump:
-        type: string
-        required: true
   workflow_dispatch:
     inputs:
       semver-bump:
@@ -30,26 +25,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: check semver-bump
-      if: github.event_name == 'workflow_call' && inputs.semver-bump != 'beta'
-      run: exit 1
     - name: check changelogs if not prerelease
-      if: inputs.semver-bump != 'beta'
+      if: inputs.semver-bump != 'alpha' && inputs.semver-bump != 'beta'
       run: |
         ./.github/workflows/changelog_check.sh cli/CHANGELOG.md
         ./.github/workflows/changelog_check.sh core/CHANGELOG.md
 
   verify:
-    uses: ./.github/workflows/verify.yml
     needs: [check-build-params]
+    uses: ./.github/workflows/verify.yml
 
   publish-cargo-crates:
     runs-on: ubuntu-latest
     needs: verify
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - run: rustup install stable
       - uses: swatinem/rust-cache@v2
+        with:
+          cache-bin: false
       - name: install cargo release
         run: |
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
