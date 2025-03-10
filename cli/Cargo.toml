@@ -1,6 +1,6 @@
 [package]
 name = "maestro"
-version = "0.2.1-beta.1"
+version = "0.2.1-beta.2"
 authors = { workspace = true }
 description = { workspace = true }
 edition = { workspace = true }
@@ -17,7 +17,7 @@ anyhow = { workspace = true }
 clap = { version = "4.5.31", features = ["derive"] }
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
-maestro_git = { path = "../git", version = "0.2.1-beta.1" }
+maestro_git = { path = "../git", version = "0.2.1-beta.2" }
 open = "5.3.2"
 ratatui = "0.29.0"
 tokio = { workspace = true }
