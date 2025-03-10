@@ -753,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "maestro"
-version = "0.2.1-beta.2"
+version = "0.2.1-beta.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -767,7 +767,7 @@ dependencies = [
 
 [[package]]
 name = "maestro_git"
-version = "0.2.1-beta.2"
+version = "0.2.1-beta.3"
 dependencies = [
  "anyhow",
  "git2",
