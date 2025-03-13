@@ -1,6 +1,7 @@
 mod find;
 mod host;
 mod pull;
+mod status;
 
 #[cfg(test)]
 mod host_test;
@@ -8,13 +9,21 @@ mod host_test;
 #[cfg(test)]
 mod pull_test;
 
+#[cfg(test)]
+mod status_test;
+
+#[cfg(test)]
+mod testing;
+
 use pull::pull_ff;
+use status::status;
 use std::path::{Path, PathBuf};
 use tokio::{sync::mpsc::UnboundedReceiver, task::JoinSet};
 
 pub use find::*;
 pub use host::*;
 pub use pull::PullResult;
+pub use status::{LocalChanges, RepoState};
 
 #[derive(Debug)]
 pub struct WorkspaceRepo {
@@ -70,8 +79,9 @@ pub enum SyncKind {
 
 #[derive(Debug)]
 pub struct SyncResult {
-    pub repo: WorkspaceRepo,
     pub kind: SyncKind,
+    pub repo: WorkspaceRepo,
+    pub state: RepoState,
 }
 
 pub fn sync(opts: SyncOptions) -> Result<Sync, anyhow::Error> {
@@ -86,7 +96,8 @@ pub fn sync(opts: SyncOptions) -> Result<Sync, anyhow::Error> {
                 Err(err) => SyncKind::Pull(PullResult::Error(err.to_string())),
                 Ok(pull_result) => SyncKind::Pull(pull_result),
             };
-            tx.send(SyncResult { repo, kind }).expect("tx send");
+            let state = status(&repo.path).expect("bad rust control flow and data structuring");
+            tx.send(SyncResult { kind, repo, state }).expect("tx send");
         });
     }
     Ok(Sync {

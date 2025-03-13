@@ -3,28 +3,11 @@ use std::{
     process::Command,
 };
 
-use temp_dir::TempDir;
-
-use crate::{pull::pull_ff, PullResult, RemoteHost};
-
-fn create_test_repo() -> TempDir {
-    let temp_dir = TempDir::new().unwrap();
-    assert!(Command::new("git")
-        .arg("clone")
-        .arg("https://github.com/eighty4/pear.ng")
-        .arg(".")
-        .current_dir(temp_dir.path())
-        .output()
-        .unwrap()
-        .status
-        .success());
-    temp_dir
-}
-
-fn assert_cmd(cmd: &mut Command) {
-    let output = cmd.output().unwrap();
-    assert!(output.status.success());
-}
+use crate::{
+    pull::pull_ff,
+    testing::{assert_cmd, create_test_repo},
+    PullResult, RemoteHost,
+};
 
 #[test]
 fn pull_ff_detached_head() {
@@ -63,7 +46,6 @@ fn pull_ff_pulled() {
     assert_eq!(
         result.unwrap(),
         PullResult::FastForward {
-            branch: "main".to_string(),
             commits: 2,
             from: "e303cea".to_string(),
             to: "fe98a80".to_string(),

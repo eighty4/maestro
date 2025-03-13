@@ -11,7 +11,6 @@ pub enum PullResult {
     /// A ff merge performed with commit count
     FastForward {
         remote: RemoteHost,
-        branch: String,
         commits: u16,
         from: String,
         to: String,
@@ -87,14 +86,12 @@ pub fn pull_ff(p: &Path) -> Result<PullResult, anyhow::Error> {
     // update working tree
     repo.checkout_head(None)?;
 
-    let branch = String::from(head_ref_name.strip_prefix("refs/heads/").unwrap());
     let commits = count_commits_from_head(&repo, &start_head_oid)?;
     let from = revparse_short_id(&repo, start_head_oid.to_string().as_str())?;
     let to = revparse_short_id(&repo, fetch_commit.id().to_string().as_str())?;
     let remote = RemoteHost::new(repo.find_remote("origin")?.url().expect("remote url"));
 
     Ok(PullResult::FastForward {
-        branch,
         commits,
         from,
         to,

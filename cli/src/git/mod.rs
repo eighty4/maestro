@@ -1,3 +1,4 @@
+mod indicator;
 mod interactive;
 mod print;
 

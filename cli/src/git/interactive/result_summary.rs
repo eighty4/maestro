@@ -1,4 +1,4 @@
-use maestro_git::{PullResult, SyncKind, SyncResult};
+use maestro_git::{LocalChanges, PullResult, SyncKind, SyncResult};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -6,6 +6,8 @@ use ratatui::{
     text::Line,
     widgets::{Paragraph, Widget},
 };
+
+use crate::git::indicator::SyncIndicator;
 
 use super::LayoutMode;
 
@@ -74,20 +76,49 @@ impl Widget for SyncResultWidget<'_> {
         Paragraph::new(Line::from(vec![
             indent.into(),
             indent.into(),
-            match pull_result {
-                PullResult::FastForward { .. } | PullResult::UpToDate => "✔".green(),
-                _ => "✗".red(),
+            match SyncIndicator::from(self.result) {
+                SyncIndicator::Clean => "✔".green(),
+                SyncIndicator::LocalChanges => "✔".yellow(),
+                SyncIndicator::Error => "✗".red(),
             },
             " ".into(),
-            match pull_result {
-                PullResult::DetachedHead => "HEAD is detached.".to_string(),
-                PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
-                PullResult::FastForward { commits, .. } => format!("Pulled {commits} commits."),
-                PullResult::UnpullableMerge => {
-                    "Unable to ff merge changes from remote.".to_string()
+            format!(
+                "{} {}",
+                match pull_result {
+                    PullResult::DetachedHead => "HEAD is detached.".to_string(),
+                    PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
+                    PullResult::FastForward { commits, .. } => format!("Pulled {commits} commits."),
+                    PullResult::UnpullableMerge => {
+                        "Unable to ff merge changes from remote.".to_string()
+                    }
+                    PullResult::UpToDate => "Already up to date.".to_string(),
+                },
+                match &self.result.state.changes {
+                    LocalChanges::Clean => String::new(),
+                    LocalChanges::Present {
+                        stashes,
+                        staged,
+                        unstaged,
+                        untracked,
+                    } => {
+                        let mut changes = Vec::new();
+                        if *stashes > 0 {
+                            changes.push(format!(
+                                "{stashes} stash{}",
+                                if *stashes == 1 { "" } else { "es" }
+                            ));
+                        }
+                        if *staged > 0 || *unstaged > 0 || *untracked > 0 {
+                            let total = staged + unstaged + untracked;
+                            changes.push(format!(
+                                "{total} change{}",
+                                if total == 1 { "" } else { "s" }
+                            ));
+                        }
+                        format!("(local has {})", changes.join(", "))
+                    }
                 }
-                PullResult::UpToDate => "Already up to date.".to_string(),
-            }
+            )
             .into(),
         ]))
         .render(line2, buf);
