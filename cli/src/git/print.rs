@@ -9,52 +9,47 @@ pub async fn print_sync_updates(mut syncing: Sync) {
     let mut _done: usize = 0;
     while let Some(result) = syncing.rx.recv().await {
         _done += 1;
-        let text = match &result.kind {
-            SyncKind::Pull(PullResult::DetachedHead) => "detached head".to_string(),
-            SyncKind::Pull(PullResult::Error(err_msg)) => err_msg.clone(),
+        let mut statuses = Vec::new();
+        let sync_status = match &result.kind {
+            SyncKind::Pull(PullResult::UpToDate) => None,
+            SyncKind::Pull(PullResult::DetachedHead) => Some("detached head".to_string()),
+            SyncKind::Pull(PullResult::Error(err_msg)) => Some(err_msg.clone().red().to_string()),
             SyncKind::Pull(PullResult::FastForward { commits, .. }) => {
-                format!("pulled {commits} commits",)
+                Some(format!("pulled {commits} commits"))
             }
-            SyncKind::Pull(PullResult::UnpullableMerge) => {
-                "unable to ff merge from remote".to_string()
-            }
-            SyncKind::Pull(PullResult::UpToDate) => "already up to date".to_string(),
+            SyncKind::Pull(PullResult::UnpullableMerge) => Some("unable to ff merge".to_string()),
         };
-        let local_changes = match result.state.changes {
-            LocalChanges::Clean => String::new(),
-            LocalChanges::Present {
-                stashes,
-                staged,
-                unstaged,
-                untracked,
-            } => {
-                let mut changes = Vec::new();
-                if stashes > 0 {
-                    changes.push(format!(
-                        "{stashes} stash{}",
-                        if stashes == 1 { "" } else { "es" }
-                    ));
-                }
-                if staged > 0 || unstaged > 0 || untracked > 0 {
-                    let total = staged + unstaged + untracked;
-                    changes.push(format!(
-                        "{total} change{}",
-                        if total == 1 { "" } else { "s" }
-                    ));
-                }
-                format!(", local has {}", changes.join(", "))
+        if let Some(sync_status) = sync_status {
+            statuses.push(sync_status);
+        }
+        if let LocalChanges::Present {
+            stashes,
+            staged,
+            unstaged,
+            untracked,
+        } = result.state.changes
+        {
+            if stashes > 0 {
+                statuses.push(format!(
+                    "{stashes} stash{}",
+                    if stashes == 1 { "" } else { "es" }
+                ));
             }
-        };
+            if staged > 0 || unstaged > 0 || untracked > 0 {
+                let total = staged + unstaged + untracked;
+                statuses.push(format!(
+                    "{total} local change{}",
+                    if total == 1 { "" } else { "s" }
+                ));
+            }
+        }
         let display_name = format!("{:w$}", result.repo.label, w = label_max_len).bold();
         let indicator = match SyncIndicator::from(&result) {
             SyncIndicator::Clean => '✔'.green(),
             SyncIndicator::LocalChanges => '✔'.yellow(),
             SyncIndicator::Error => '✗'.red(),
         };
-        println!(
-            "  {}  {} {}{}",
-            display_name, indicator, text, local_changes,
-        );
+        println!("  {display_name}  {indicator} {}", statuses.join(", "));
     }
     println!("\nAll repositories synced!");
 }
