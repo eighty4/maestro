@@ -1,6 +1,6 @@
 [package]
 name = "maestro_git"
-version = "0.2.1-beta.9"
+version = "0.2.1"
 authors = { workspace = true }
 description = { workspace = true }
 edition = { workspace = true }
