@@ -1,15 +1,14 @@
 name: Publish
-run-name: Create ${{ inputs.semver-bump }} release
+run-name: Create ${{ inputs.release-version != '' && inputs.release-version || inputs.semver-bump }} release
 
 on:
   workflow_dispatch:
     inputs:
       semver-bump:
         description: Semver bump release type
-        required: true
         type: choice
-        default: alpha
         options:
+          - ""
           - major
           - minor
           - patch
@@ -17,6 +16,9 @@ on:
           - rc
           - beta
           - alpha
+      release-version:
+        description: Explicit release version
+        type: string
 
 concurrency: publish
 
@@ -24,8 +26,12 @@ jobs:
   check-build-params:
     runs-on: ubuntu-latest
     steps:
+    - if: inputs.semver-bump == '' && inputs.release-version == ''
+      run: exit 1
+    - if: inputs.semver-bump != '' && inputs.release-version != ''
+      run: exit 1
     - uses: actions/checkout@v4
-    - name: check changelogs if not prerelease
+    - name: check changelogs
       run: |
         ./.github/workflows/changelog_check.sh cli/CHANGELOG.md
         ./.github/workflows/changelog_check.sh git/CHANGELOG.md
@@ -53,8 +59,9 @@ jobs:
         run: |
           git config --global user.name "Adam McKee"
           git config --global user.email "adam.be.g84d@gmail.com"
-          cargo release --no-confirm -x ${{ inputs.semver-bump }}
+          cargo release --no-confirm -x "$BUMP"
         env:
+          BUMP: ${{ inputs.release-version != '' && inputs.release-version || inputs.semver-bump }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
       - id: version
         run: |
