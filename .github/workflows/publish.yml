@@ -26,10 +26,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: check changelogs if not prerelease
-      if: inputs.semver-bump != 'alpha' && inputs.semver-bump != 'beta'
       run: |
         ./.github/workflows/changelog_check.sh cli/CHANGELOG.md
-        ./.github/workflows/changelog_check.sh core/CHANGELOG.md
+        ./.github/workflows/changelog_check.sh git/CHANGELOG.md
 
   verify:
     needs: [check-build-params]
