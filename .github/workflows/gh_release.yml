@@ -26,10 +26,17 @@ jobs:
           path: artifacts
           merge-multiple: true
       - name: Release notes
+        if: inputs.prerelease == 'true'
         run: |
           RELEASE_NOTES=$(./.github/workflows/changelog_get.sh cli/CHANGELOG.md ${{ inputs.version }})
           CRATES_URL="https://crates.io/crates/maestro/${{ inputs.version }}"
           echo "[Published on crates.io]($CRATES_URL)\r\n\r\n### Release notes\r\n\r\n$RELEASE_NOTES" > release_notes.md
+      - name: Preview release notes
+        if: inputs.prerelease != 'true'
+        run: |
+            RELEASE_NOTES=$(./.github/workflows/changelog_get.sh cli/CHANGELOG.md Unreleased)
+            CRATES_URL="https://crates.io/crates/maestro/${{ inputs.version }}"
+            echo "[Published on crates.io]($CRATES_URL)\r\n\r\n### Release notes\r\n\r\n$RELEASE_NOTES" > release_notes.md
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -37,9 +44,10 @@ jobs:
           VERSION: ${{ inputs.version }}
         working-directory: artifacts
         run: |
-          ls | xargs gh release create "${{ inputs.tag }}" \
+          ls | xargs -I {} sh -c 'cat ../release_notes.md | gh release create "${{ inputs.tag }}" \
             --repo "eighty4/maestro" \
             ${{ inputs.prerelease == 'true' && '--prerelease' || '' }} \
             ${{ inputs.prerelease != 'true' && '--latest' || '' }} \
-            --notes-file ../release_notes.md \
-            --title "Maestro v${{ inputs.version }}"
+            --notes-file - \
+            --title "Maestro v${{ inputs.version }}" \
+            {}'
