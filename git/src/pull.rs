@@ -21,7 +21,6 @@ pub enum PullResult {
     UpToDate,
 }
 
-// todo rm panic and pull both default branch and current branch
 pub fn pull_ff(p: &Path) -> Result<PullResult, anyhow::Error> {
     let repo = git2::Repository::open(p)?;
 
@@ -29,35 +28,33 @@ pub fn pull_ff(p: &Path) -> Result<PullResult, anyhow::Error> {
         return Ok(PullResult::DetachedHead);
     }
 
-    // connection is required before Remote::default_branch
-    // will be reused for Remote::fetch
+    // creating remote connection for retrieving remote's default branch
+    // and reused for fetching changes from remote
     let mut remote = repo.find_remote("origin")?;
     let mut remote_connection =
         remote.connect_auth(Direction::Fetch, Some(remote_auth_callbacks()), None)?;
-    let head_ref_name = remote_connection
+    let remote_default_branch_name = remote_connection
         .default_branch()?
         .as_str()
         .map(String::from)
         .ok_or_else(|| anyhow!("remote default branch was not utf8"))?;
 
-    // how to get head ref, using origin default branch for now
-    // let head_ref = repo.head()?;
-    // let head_ref_name = head_ref.name().map(String::from).unwrap();
-
-    // will panic if HEAD is not default branch
+    // todo sync both default branch and HEAD ref branch, erroring for now
     let start_head_oid = get_ref_oid(&repo, "HEAD")?;
-    if start_head_oid != get_ref_oid(&repo, &head_ref_name)? {
-        panic!("not on {head_ref_name} in repo {}", p.to_string_lossy());
+    if start_head_oid != get_ref_oid(&repo, &remote_default_branch_name)? {
+        return Err(anyhow!("not on {remote_default_branch_name}"));
     }
 
     // fetch from remote
     let mut fetch_options = git2::FetchOptions::new();
     fetch_options.remote_callbacks(remote_auth_callbacks());
-    remote_connection
-        .remote()
-        .fetch(&[&head_ref_name], Some(&mut fetch_options), None)?;
+    remote_connection.remote().fetch(
+        &[&remote_default_branch_name],
+        Some(&mut fetch_options),
+        None,
+    )?;
 
-    // analyze whether FETCH_HEAD is mergability
+    // analyze whether FETCH_HEAD is mergable
     let fetch_commit = repo.reference_to_annotated_commit(&repo.find_reference("FETCH_HEAD")?)?;
     let merge_analysis = repo.merge_analysis(&[&fetch_commit])?;
 
@@ -72,17 +69,18 @@ pub fn pull_ff(p: &Path) -> Result<PullResult, anyhow::Error> {
     }
 
     // update fetched branch ref to FETCH_HEAD's oid
-    repo.find_reference(&head_ref_name)?.set_target(
-        fetch_commit.id(),
-        format!(
-            "maestro_git::sync ff {} to {}",
-            head_ref_name,
-            fetch_commit.id()
-        )
-        .as_str(),
-    )?;
+    repo.find_reference(&remote_default_branch_name)?
+        .set_target(
+            fetch_commit.id(),
+            format!(
+                "maestro_git::sync ff {} to {}",
+                remote_default_branch_name,
+                fetch_commit.id()
+            )
+            .as_str(),
+        )?;
     // update HEAD ref to fetched branch
-    repo.set_head(&head_ref_name)?;
+    repo.set_head(&remote_default_branch_name)?;
     // update working tree
     repo.checkout_head(None)?;
 
