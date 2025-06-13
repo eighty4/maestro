@@ -1,9 +1,11 @@
 # maestro
 
-## `maestro git`
-
 `cd` to parent directory of your repositories and keep them up to date with
-their remote and see what local state you have with one command.
+their remote and see what local state you have.
+
+All with one command.
+
+## `maestro git`
 
 ```
 Syncing 11 repos...
@@ -25,9 +27,9 @@ All repositories synced!
 
 ## `maestro git --interactive`
 
-Use an interactive mode for viewing diffs of pulled commits.
+Use a stylish interactive mode with access to diffs for pulled commits.
 
 ## `maestro git --offline`
 
-Opt to only print local repository state and do not sync with `--offline`.
+Opt to display local repository state without syncing.
 
