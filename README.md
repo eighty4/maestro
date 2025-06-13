@@ -25,6 +25,7 @@ find . -maxdepth 1 -type d \( ! -name . \) -exec bash -c "cd '{}' && git reset -
 maestro git --interactive
 ```
 
-Maestro will only perform ff merges.
+The output summarizes each repository's state to quickly check the status of
+your workspace. See the [CLI crate's README.md] for more details!
 
-The output summarizes each repository's state to quickly check the status of your workspace.
+[CLI crate's README.md]: ./cli
