@@ -2,9 +2,8 @@
 
 ## `maestro git`
 
-`cd` to the parent directory of a bunch of repositories and keep all your
-repositories up to date with their remote and quickly see what your local
-looks like.
+`cd` to parent directory of your repositories and keep them up to date with
+their remote and see what local state you have with one command.
 
 ```
 Syncing 11 repos...

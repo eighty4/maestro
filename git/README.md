@@ -1,10 +1,9 @@
 # maestro_git
 
-API for keeping workspace repositories up to date and collecting local state
-of repositories. Used by the [maestro] crate to create stylish developer
-workflows.
+API using libgit2 for stylish version control workflows. Used by the [maestro]
+crate and you should check it out with `cargo install maestro`.
 
-The [sync_repos.rs example] demonstrates a sync that pulls a couple of commits.
+The [sync_repos.rs example] demonstrates syncing a repository with this crate.
 
 [maestro]: https://crates.io/crates/maestro
 [sync_repos.rs example]: https://github.com/eighty4/maestro/blob/main/git/examples/sync_repos.rs
