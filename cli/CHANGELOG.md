@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- CLI supports `--offline` flag for `maestro git` to get workspace repository statuses without syncing
+- CLI notifies user when `--offline` mode is implicitly applied because of network availability
+
 ## 0.2.1 - 2025-03-13
 
 - CLI git prints repo state

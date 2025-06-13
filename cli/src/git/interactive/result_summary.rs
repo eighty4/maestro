@@ -71,27 +71,31 @@ impl Widget for SyncResultWidget<'_> {
             format!(" {}", self.result.repo.label).into(),
         ]))
         .render(line1, buf);
-        let SyncKind::Pull(pull_result) = &self.result.kind;
 
         Paragraph::new(Line::from(vec![
             indent.into(),
             indent.into(),
             match SyncIndicator::from(self.result) {
                 SyncIndicator::Clean => "✔".green(),
-                SyncIndicator::LocalChanges => "✔".yellow(),
                 SyncIndicator::Error => "✗".red(),
+                SyncIndicator::LocalChanges => "✔".yellow(),
+                SyncIndicator::Noop => "✔".dark_gray(),
             },
             " ".into(),
             format!(
                 "{} {}",
-                match pull_result {
-                    PullResult::DetachedHead => "HEAD is detached.".to_string(),
-                    PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
-                    PullResult::FastForward { commits, .. } => format!("Pulled {commits} commits."),
-                    PullResult::UnpullableMerge => {
-                        "Unable to ff merge changes from remote.".to_string()
-                    }
-                    PullResult::UpToDate => "Already up to date.".to_string(),
+                match &self.result.kind {
+                    SyncKind::Pull(pull_result) => match pull_result {
+                        PullResult::DetachedHead => "HEAD is detached.".to_string(),
+                        PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
+                        PullResult::FastForward { commits, .. } =>
+                            format!("Pulled {commits} commits."),
+                        PullResult::UnpullableMerge => {
+                            "Unable to ff merge changes from remote.".to_string()
+                        }
+                        PullResult::UpToDate => "Already up to date.".to_string(),
+                    },
+                    SyncKind::Skipped => String::new(),
                 },
                 match &self.result.state.changes {
                     LocalChanges::Clean => String::new(),

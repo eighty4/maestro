@@ -4,11 +4,13 @@ use maestro_git::{LocalChanges, PullResult, Sync, SyncKind};
 use crate::git::indicator::SyncIndicator;
 
 pub async fn print_sync_updates(mut syncing: Sync) {
+    if syncing.offline || !syncing.network {
+        println!("Offline report of {} repos...\n", syncing.repos.len());
+    } else {
+        println!("Syncing {} repos...\n", syncing.repos.len());
+    }
     let label_max_len = syncing.max_repo_label_len();
-    println!("Syncing {} repos...\n", syncing.repos.len());
-    let mut _done: usize = 0;
     while let Some(result) = syncing.rx.recv().await {
-        _done += 1;
         let mut statuses = Vec::new();
         let sync_status = match &result.kind {
             SyncKind::Pull(PullResult::UpToDate) => None,
@@ -18,6 +20,7 @@ pub async fn print_sync_updates(mut syncing: Sync) {
                 Some(format!("pulled {commits} commits"))
             }
             SyncKind::Pull(PullResult::UnpullableMerge) => Some("unable to ff merge".to_string()),
+            SyncKind::Skipped => None,
         };
         if let Some(sync_status) = sync_status {
             statuses.push(sync_status);
@@ -46,10 +49,15 @@ pub async fn print_sync_updates(mut syncing: Sync) {
         let display_name = format!("{:w$}", result.repo.label, w = label_max_len).bold();
         let indicator = match SyncIndicator::from(&result) {
             SyncIndicator::Clean => '✔'.green(),
-            SyncIndicator::LocalChanges => '✔'.yellow(),
             SyncIndicator::Error => '✗'.red(),
+            SyncIndicator::LocalChanges => '✔'.yellow(),
+            SyncIndicator::Noop => '✔'.dark_grey(),
         };
         println!("  {display_name}  {indicator} {}", statuses.join(", "));
     }
-    println!("\nAll repositories synced!");
+    if !syncing.offline && syncing.network {
+        println!("\nAll repositories synced!");
+    } else if !syncing.offline && !syncing.network {
+        println!("\n    {} network was unavailable for syncing\n", '✗'.red());
+    }
 }

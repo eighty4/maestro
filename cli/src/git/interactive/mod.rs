@@ -271,14 +271,22 @@ impl Widget for &InteractiveSync {
 impl InteractiveSync {
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         const SYNC_CMD: &str = "maestro git";
+        let (cmd_title, cmd_title_len) = if self.syncing.offline {
+            (
+                Line::from(vec![SYNC_CMD.into(), " --offline".dark_gray()]),
+                SYNC_CMD.len() + 10,
+            )
+        } else {
+            (Line::from(SYNC_CMD), SYNC_CMD.len())
+        };
         let [header_cmd_area, header_ws_area] = Layout::horizontal([
-            Constraint::Length(SYNC_CMD.len() as u16),
+            Constraint::Length(cmd_title_len as u16),
             Constraint::Length(self.workspace.len() as u16),
         ])
         .flex(Flex::SpaceBetween)
         .vertical_margin(1)
         .areas(area);
-        Paragraph::new(SYNC_CMD).render(header_cmd_area, buf);
+        Paragraph::new(cmd_title).render(header_cmd_area, buf);
         Paragraph::new(self.workspace.as_str().dark_gray()).render(header_ws_area, buf);
     }
 
@@ -303,7 +311,11 @@ impl InteractiveSync {
             ))
             .render(paging_area, buf);
         }
-        if self.has_compare_url(cursor) {
+        if !self.syncing.network {
+            Paragraph::new(Line::from(vec!["✗".red(), " network unavailable".into()]))
+                .right_aligned()
+                .render(shortcuts_area, buf);
+        } else if self.has_compare_url(cursor) {
             Paragraph::new(Line::from(vec![
                 "d".cyan().bold(),
                 " compare changes".into(),

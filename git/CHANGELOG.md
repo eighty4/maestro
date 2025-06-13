@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Sync API supports offline flag to collect repository statuses without syncing
+- Sync API uses DNS lookup to determine network connectivity before syncing
+
 ## 0.2.1 - 2025-03-13
 
 - Sync API collects local change and stash counts in repository

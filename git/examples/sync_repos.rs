@@ -22,7 +22,11 @@ async fn main() {
         .unwrap();
     let repos = find_repos(temp_dir.path(), 1).unwrap();
     dbg!(&repos);
-    let mut syncing = sync(SyncOptions { repos }).unwrap();
+    let mut syncing = sync(SyncOptions {
+        repos,
+        offline: false,
+    })
+    .unwrap();
     while let Some(sync_result) = syncing.rx.recv().await {
         dbg!(sync_result);
     }

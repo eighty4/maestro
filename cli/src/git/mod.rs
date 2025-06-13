@@ -15,9 +15,15 @@ pub struct GitCommand {
         short,
         long,
         default_value = "false",
-        long_help = "Sync a workspace of git repositories"
+        long_help = "Interactive UI for git repos"
     )]
     interactive: bool,
+    #[clap(
+        long,
+        default_value = "false",
+        long_help = "Collect git repo state without syncing"
+    )]
+    offline: bool,
 }
 
 impl MaestroCommandRun for GitCommand {
@@ -31,7 +37,11 @@ impl MaestroCommandRun for GitCommand {
         }
 
         // start syncing and stream updates to ui
-        let syncing = sync(SyncOptions { repos }).expect("sync start");
+        let syncing = sync(SyncOptions {
+            offline: self.offline,
+            repos,
+        })
+        .expect("sync start");
         if self.interactive {
             InteractiveSync::new(workspace_root.to_string_lossy().to_string(), syncing)
                 .run()

@@ -17,8 +17,14 @@ mod testing;
 
 use pull::pull_ff;
 use status::status;
-use std::path::{Path, PathBuf};
-use tokio::{sync::mpsc::UnboundedReceiver, task::JoinSet};
+use std::{
+    net::ToSocketAddrs,
+    path::{Path, PathBuf},
+};
+use tokio::{
+    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    task::JoinSet,
+};
 
 pub use find::*;
 pub use host::*;
@@ -50,11 +56,16 @@ impl WorkspaceRepo {
 }
 
 pub struct SyncOptions {
+    pub offline: bool,
     pub repos: Vec<WorkspaceRepo>,
 }
 
 pub struct Sync {
     _join_set: JoinSet<()>,
+    // network available if not offline mode
+    pub network: bool,
+    // user preference offline mode
+    pub offline: bool,
     pub repos: Vec<String>,
     pub rx: UnboundedReceiver<SyncResult>,
 }
@@ -75,6 +86,7 @@ impl Sync {
 #[derive(Debug)]
 pub enum SyncKind {
     Pull(PullResult),
+    Skipped,
 }
 
 #[derive(Debug)]
@@ -85,24 +97,36 @@ pub struct SyncResult {
 }
 
 pub fn sync(opts: SyncOptions) -> Result<Sync, anyhow::Error> {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<SyncResult>();
+    let (tx, rx) = unbounded_channel::<SyncResult>();
     let mut join_set = JoinSet::new();
     let mut repos = Vec::with_capacity(opts.repos.len());
+    let network = !opts.offline && is_network_available();
     for repo in opts.repos {
         repos.push(repo.label.clone());
-        let tx = tx.clone();
-        join_set.spawn(async move {
-            let kind = match pull_ff(&repo.path) {
-                Err(err) => SyncKind::Pull(PullResult::Error(err.to_string())),
-                Ok(pull_result) => SyncKind::Pull(pull_result),
-            };
-            let state = status(&repo.path).expect("bad rust control flow and data structuring");
-            tx.send(SyncResult { kind, repo, state }).expect("tx send");
-        });
+        join_set.spawn(sync_flow(repo, !network, tx.clone()));
     }
     Ok(Sync {
         _join_set: join_set,
+        network,
+        offline: opts.offline,
         repos,
         rx,
     })
+}
+
+fn is_network_available() -> bool {
+    "github.com:443".to_socket_addrs().is_ok()
+}
+
+async fn sync_flow(repo: WorkspaceRepo, offline: bool, tx: UnboundedSender<SyncResult>) {
+    let kind = if offline {
+        SyncKind::Skipped
+    } else {
+        match pull_ff(&repo.path) {
+            Err(err) => SyncKind::Pull(PullResult::Error(err.to_string())),
+            Ok(pull_result) => SyncKind::Pull(pull_result),
+        }
+    };
+    let state = status(&repo.path).expect("bad rust control flow and data structuring");
+    tx.send(SyncResult { kind, repo, state }).expect("tx send");
 }
