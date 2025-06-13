@@ -1,6 +1,6 @@
 [package]
 name = "maestro_git"
-version = "0.2.2-alpha.5"
+version = "0.2.2-alpha.6"
 description = "API using libgit2 for stylish version control workflows"
 authors = { workspace = true }
 edition = { workspace = true }
