@@ -1,4 +1,4 @@
-name: Publish
+name: Publish to crates.io
 run-name: Create ${{ inputs.release-version != '' && inputs.release-version || inputs.semver-bump }} release
 
 on:
@@ -7,6 +7,7 @@ on:
       semver-bump:
         description: Semver bump release type
         type: choice
+        default: alpha
         options:
           - ""
           - major
@@ -25,24 +26,33 @@ concurrency: publish
 jobs:
   check-build-params:
     runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ contains(fromJSON('["rc", "beta", "alpha"]'), inputs.semver-bump) && 'true' || 'false' }}
     steps:
-    - if: inputs.semver-bump == '' && inputs.release-version == ''
-      run: exit 1
-    - if: inputs.semver-bump != '' && inputs.release-version != ''
-      run: exit 1
-    - uses: actions/checkout@v4
-    - name: check changelogs
-      run: |
-        ./.github/workflows/changelog_check.sh cli/CHANGELOG.md
-        ./.github/workflows/changelog_check.sh git/CHANGELOG.md
+      - name: one of inputs
+        if: inputs.semver-bump == '' && inputs.release-version == ''
+        run: exit 1
+      - name: only one of inputs
+        if: inputs.semver-bump != '' && inputs.release-version != ''
+        run: exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 23
+      - run: npm i -g @eighty4/changelog
+      - name: check cli changelog
+        if: inputs.semver-bump != 'alpha' && inputs.semver-bump != 'beta'
+        run: changelog check --changelog-file cli/CHANGELOG.md
+      - name: check git changelog
+        if: inputs.semver-bump != 'alpha' && inputs.semver-bump != 'beta'
+        run: changelog check --changelog-file git/CHANGELOG.md
 
   verify:
-    needs: [check-build-params]
-    uses: ./.github/workflows/verify.yml
+    uses: ./.github/workflows/ci_verify.yml
 
   publish-cargo-crates:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [check-build-params, verify]
     permissions:
       contents: write
     steps:
@@ -73,13 +83,25 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       version: ${{ steps.version.outputs.version }}
 
+  create-release-notes:
+    needs: [check-build-params, publish-cargo-crates]
+    uses: ./.github/workflows/release_notes.yml
+    with:
+      git_tag: ${{ needs.publish-cargo-crates.outputs.tag }}
+      crate_version: ${{ needs.publish-cargo-crates.outputs.version }}
+      package_path: cli
+      prerelease: ${{ needs.check-build-params.outputs.prerelease == 'true' }}
+
   create-gh-release:
-    needs: [verify, publish-cargo-crates]
+    needs: [check-build-params, verify, create-release-notes, publish-cargo-crates]
     secrets: inherit
     permissions:
       contents: write
     uses: ./.github/workflows/gh_release.yml
     with:
+      title: 'Maestro v${{ needs.publish-cargo-crates.outputs.version }}'
+      artifacts_path: artifacts
+      release_notes: ${{ needs.create-release-notes.outputs.notes }}
       tag: ${{ needs.publish-cargo-crates.outputs.tag }}
-      version: ${{ needs.publish-cargo-crates.outputs.version }}
-      prerelease: ${{ contains(fromJSON('["rc", "beta", "alpha"]'), inputs.semver-bump) && 'true' || 'false' }}
+      latest: ${{ needs.check-build-params.outputs.prerelease == 'true' && 'false' || 'true' }}
+      prerelease: ${{ needs.check-build-params.outputs.prerelease }}

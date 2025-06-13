@@ -1,4 +1,4 @@
-name: Verify
+name: CI verify
 run-name: "Verify: ${{ github.event.head_commit.message || github.workflow_dispatch.ref }}"
 
 on:

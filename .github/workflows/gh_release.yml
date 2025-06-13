@@ -1,35 +1,48 @@
-name: GH Release
+name: Create GitHub release
 run-name: Create ${{ inputs.tag }} GitHub release
 
 on:
   workflow_call:
     inputs:
+      title:
+        type: string
+        required: true
+      release_notes:
+        type: string
+        required: true
       prerelease:
+        type: string
+        required: true
+      latest:
         type: string
         required: true
       tag:
         type: string
         required: true
-      version:
+      artifacts_path:
         type: string
-        required: true
 
 jobs:
   create-gh-release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - if: inputs.artifacts_path != ''
+        uses: actions/download-artifact@v4
         with:
-          ref: ${{ inputs.tag }}
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
+          path: ${{ inputs.artifacts_path }}
           merge-multiple: true
-      - name: Create release
-        run: ./.github/workflows/create_gh_release.sh ./artifacts
+      - name: create github release
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANGELOG: ${{ inputs.prerelease == 'true' && 'Unreleased' || inputs.version }}
-          VERSION: ${{ inputs.version }}
-          TAG: ${{ inputs.tag }}
-          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          echo "${{ inputs.release_notes  }}" | base64 --decode > release_notes.md
+          _assets=$(ls ${{ inputs.artifact_path }})
+          gh release create "${{ inputs.tag }}" \
+            --repo="${{ github.repository }}" \
+            --latest="${{ inputs.latest }}" \
+            --prerelease="${{ inputs.prerelease }}" \
+            --notes-file release_notes.md \
+            --title "${{ inputs.title }}" \
+            $_assets
