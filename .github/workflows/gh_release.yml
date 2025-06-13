@@ -38,7 +38,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "${{ inputs.release_notes  }}" | base64 --decode > release_notes.md
-          _assets=$(ls ${{ inputs.artifact_path }})
+          _assets=$(ls ${{ inputs.artifacts_path }})
           gh release create "${{ inputs.tag }}" \
             --repo="${{ github.repository }}" \
             --latest="${{ inputs.latest }}" \
