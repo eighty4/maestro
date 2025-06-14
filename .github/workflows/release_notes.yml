@@ -38,10 +38,11 @@ jobs:
         env:
           CHANGELOG_TAG: ${{ inputs.prerelease && 'Unreleased' || format('v{0}', inputs.crate_version) }}
           CRATE_VERSION: ${{ inputs.crate_version }}
+          INSTALL_SPECIFIER: ${{ inputs.prerelease && format('@{0}', inputs.crate_version) || '' }}
         run: |
           echo "#### Published to crates.io as [maestro](https://crates.io/crates/maestro/$CRATE_VERSION)" >> release_notes.md
           echo >> release_notes.md
-          echo "\`\`\`cargo install maestro\`\`\`" >> release_notes.md
+          echo "\`\`\`cargo install maestro$INSTALL_SPECIFIER\`\`\`" >> release_notes.md
           echo >> release_notes.md
 
           echo "## Release notes" >> release_notes.md
