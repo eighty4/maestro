@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "maestro"
-version = "0.2.2-alpha.8"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -817,7 +817,7 @@ dependencies = [
 
 [[package]]
 name = "maestro_git"
-version = "0.2.2-alpha.8"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "git2",

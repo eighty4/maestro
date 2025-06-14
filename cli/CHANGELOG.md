@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- ???
+
+## [v0.2.2] - 2025-06-14
+
 - CLI supports `--offline` flag for `maestro git` to get workspace repository statuses without syncing
 - CLI notifies user when `--offline` mode is implicitly applied because of network availability
 
@@ -15,6 +19,7 @@
 - CLI provides interactive TUI for git pulls
 - CLI git interactive mode launches browser with GitHub compare page
 
-[Unreleased]: https://github.com/eighty4/maestro/compare/maestro-v0.2.1...HEAD
+[Unreleased]: https://github.com/eighty4/maestro/compare/maestro-v0.2.2...HEAD
+[v0.2.2]: https://github.com/eighty4/maestro/compare/maestro-v0.2.1...maestro-v0.2.2
 [v0.2.1]: https://github.com/eighty4/maestro/compare/maestro-v0.2.0...maestro-v0.2.1
 [v0.2.0]: https://github.com/eighty4/maestro/releases/tag/maestro-v0.2.0
