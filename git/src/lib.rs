@@ -71,6 +71,11 @@ pub struct Sync {
 }
 
 impl Sync {
+    // return true if not offline mode and network unavailable
+    pub fn is_network_unavailable(&self) -> bool {
+        !self.offline && !self.network
+    }
+
     pub fn max_repo_label_len(&self) -> usize {
         let mut max = 0;
         for repo in &self.repos {

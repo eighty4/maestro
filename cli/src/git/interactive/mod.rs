@@ -311,7 +311,7 @@ impl InteractiveSync {
             ))
             .render(paging_area, buf);
         }
-        if !self.syncing.network {
+        if self.syncing.is_network_unavailable() {
             Paragraph::new(Line::from(vec!["✗".red(), " network unavailable".into()]))
                 .right_aligned()
                 .render(shortcuts_area, buf);

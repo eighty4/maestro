@@ -57,7 +57,7 @@ pub async fn print_sync_updates(mut syncing: Sync) {
     }
     if !syncing.offline && syncing.network {
         println!("\nAll repositories synced!");
-    } else if !syncing.offline && !syncing.network {
+    } else if syncing.is_network_unavailable() {
         println!("\n    {} network was unavailable for syncing\n", '✗'.red());
     }
 }
