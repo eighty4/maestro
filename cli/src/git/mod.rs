@@ -15,13 +15,14 @@ pub struct GitCommand {
         short,
         long,
         default_value = "false",
-        long_help = "Interactive UI for git repos"
+        long_help = "Interactive UI for git syncing"
     )]
     interactive: bool,
     #[clap(
+        short,
         long,
         default_value = "false",
-        long_help = "Collect git repo state without syncing"
+        long_help = "View local repo state without syncing"
     )]
     offline: bool,
 }
