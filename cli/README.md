@@ -27,9 +27,9 @@ All repositories synced!
 
 ## `maestro git --interactive`
 
-Use a stylish interactive mode with access to diffs for pulled commits.
+Use a stylish interactive mode to view diffs of pulled commits.
 
 ## `maestro git --offline`
 
-Opt to display local repository state without syncing.
+Opt to see local repository state without syncing.
 
