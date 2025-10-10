@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- ???
+
+## [v0.2.3] - 2025-10-10
+
 - PullResult::UnsupportedRemote was added to declare when a remote url protocol or format
   causes Sync to skip connecting to remote and fetching new commits
 
@@ -19,7 +23,8 @@
 - Sync API parallelizes git pulls across multiple git repositories
 - Sync API provides RemoteHost for accessing featurs of the remote's Git services such as GitHub's ref compare page
 
-[Unreleased]: https://github.com/eighty4/maestro/compare/maestro_git-v0.2.2...HEAD
+[Unreleased]: https://github.com/eighty4/maestro/compare/maestro_git-v0.2.3...HEAD
+[v0.2.3]: https://github.com/eighty4/maestro/compare/maestro_git-v0.2.2...maestro_git-v0.2.3
 [v0.2.2]: https://github.com/eighty4/maestro/compare/maestro_git-v0.2.1...maestro_git-v0.2.2
 [v0.2.1]: https://github.com/eighty4/maestro/compare/maestro_git-v0.2.0...maestro_git-v0.2.1
 [v0.2.0]: https://github.com/eighty4/maestro/releases/tag/maestro_git-v0.2.0
