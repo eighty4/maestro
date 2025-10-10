@@ -70,7 +70,7 @@ fn pull_ff_unpullable() {
     let conflict_file = "desktop/bin/pear_cli/pear_cli.cc";
     let contents = read_to_string(test_repo.path().join(conflict_file)).unwrap();
     write(
-        test_repo.path().join(&conflict_file),
+        test_repo.path().join(conflict_file),
         format!("#include \"net_udp/udp.h\"\n{contents}"),
     )
     .unwrap();

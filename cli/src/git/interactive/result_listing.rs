@@ -64,7 +64,7 @@ impl PagingResults {
 
     pub fn page_count(&self) -> usize {
         let divide = self.repos_count / self.page_size;
-        if self.repos_count % self.page_size == 0 {
+        if self.repos_count.is_multiple_of(self.page_size) {
             divide
         } else {
             divide + 1

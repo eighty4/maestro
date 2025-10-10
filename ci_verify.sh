@@ -40,6 +40,9 @@ cargo test --workspace
 echo '\n*** cargo clippy -- -D warnings ***'
 cargo clippy --all -- -D warnings
 
+echo '\n*** cargo clippy --tests -- -D warnings ***'
+cargo clippy --all --tests -- -D warnings
+
 # echo '\n*** cargo run --example(s) ***'
 # cargo run -p maestro_sync --example some_example
 
