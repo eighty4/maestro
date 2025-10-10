@@ -6,6 +6,7 @@ use crate::RemoteHost;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum PullResult {
+    UnsupportedRemote,
     DetachedHead,
     Error(String),
     /// A ff merge performed with commit count
@@ -31,6 +32,16 @@ pub fn pull_ff(p: &Path) -> Result<PullResult, anyhow::Error> {
     // creating remote connection for retrieving remote's default branch
     // and reused for fetching changes from remote
     let mut remote = repo.find_remote("origin")?;
+
+    // bail if remote url is a local filesystem path
+    if remote
+        .url()
+        .map(|url| url.starts_with(".") || url.starts_with("/"))
+        .unwrap_or_default()
+    {
+        return Ok(PullResult::UnsupportedRemote);
+    }
+
     let mut remote_connection =
         remote.connect_auth(Direction::Fetch, Some(remote_auth_callbacks()), None)?;
     let remote_default_branch_name = remote_connection

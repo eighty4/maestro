@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 
-- ???
+- PullResult::UnsupportedRemote was added to declare when a remote url protocol or format
+  causes Sync to skip connecting to remote and fetching new commits
 
 ## [v0.2.2] - 2025-06-14
 

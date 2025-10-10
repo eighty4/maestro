@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- ???
+- Prints a quality user friendly message stating that a file protocol remote url cannot be fetched from
 
 ## [v0.2.2] - 2025-06-14
 

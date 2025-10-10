@@ -86,6 +86,7 @@ impl Widget for SyncResultWidget<'_> {
                 "{} {}",
                 match &self.result.kind {
                     SyncKind::Pull(pull_result) => match pull_result {
+                        PullResult::UnsupportedRemote => "skipping file url remote".to_string(),
                         PullResult::DetachedHead => "HEAD is detached.".to_string(),
                         PullResult::Error(err_msg) => format!("Failed pulling: {err_msg}."),
                         PullResult::FastForward { commits, .. } =>

@@ -14,6 +14,9 @@ pub async fn print_sync_updates(mut syncing: Sync) {
         let mut statuses = Vec::new();
         let sync_status = match &result.kind {
             SyncKind::Pull(PullResult::UpToDate) => None,
+            SyncKind::Pull(PullResult::UnsupportedRemote) => {
+                Some("skipping file url remote".to_string())
+            }
             SyncKind::Pull(PullResult::DetachedHead) => Some("detached head".to_string()),
             SyncKind::Pull(PullResult::Error(err_msg)) => Some(err_msg.clone().red().to_string()),
             SyncKind::Pull(PullResult::FastForward { commits, .. }) => {
@@ -51,7 +54,12 @@ pub async fn print_sync_updates(mut syncing: Sync) {
             SyncIndicator::Clean => '✔'.green(),
             SyncIndicator::Error => '✗'.red(),
             SyncIndicator::LocalChanges => '✔'.yellow(),
-            SyncIndicator::Noop => '✔'.dark_grey(),
+            SyncIndicator::Noop => if syncing.offline || !syncing.network {
+                '✔'
+            } else {
+                '✗'
+            }
+            .dark_grey(),
         };
         println!("  {display_name}  {indicator} {}", statuses.join(", "));
     }
