@@ -17,7 +17,6 @@ impl From<&SyncResult> for SyncIndicator {
                         LocalChanges::Present { .. } => SyncIndicator::LocalChanges,
                     }
                 }
-                PullResult::UnsupportedRemote => SyncIndicator::Noop,
                 _ => SyncIndicator::Error,
             },
             SyncKind::Skipped => SyncIndicator::Noop,

@@ -15,7 +15,7 @@ pub async fn print_sync_updates(mut syncing: Sync) {
         let sync_status = match &result.kind {
             SyncKind::Pull(PullResult::UpToDate) => None,
             SyncKind::Pull(PullResult::UnsupportedRemote) => {
-                Some("skipping file url remote".to_string())
+                Some("not a pullable remote url".red().to_string())
             }
             SyncKind::Pull(PullResult::DetachedHead) => Some("detached head".to_string()),
             SyncKind::Pull(PullResult::Error(err_msg)) => Some(err_msg.clone().red().to_string()),
